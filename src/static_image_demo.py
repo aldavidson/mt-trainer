@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 # cv2 - computer vision lib
 # mediapip - google's toolkit for applying AI to media
 import argparse
@@ -46,6 +48,7 @@ results = pose.process(converted_image)
 annotated_image = np.copy(mp_image.numpy_view())
 converted_annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
 mp_drawing.draw_landmarks(converted_annotated_image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS, landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
+
 # Save the annotated image
 print('writing annotated image to ', output_file)
 cv2.imwrite(output_file, converted_annotated_image)
