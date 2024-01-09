@@ -22,8 +22,8 @@ def default_output_file_path(input_file):
   return out_path
 
 parser = argparse.ArgumentParser(
-                    prog='MT-Trainer static image demo',
-                    description='Estimates the pose of a single person in the given mp4 video, outputs an annotated video to the given file path')
+                    prog='landmark_video.py',
+                    description='Estimates the pose of a single person in the given video file, outputs an annotated video to the given file path')
 parser.add_argument('input_file')
 parser.add_argument('--output-file', '-o', dest='output_file')
 parser.add_argument('-v', '--verbose', choices=['true','false'], default='false', dest='verbose')
