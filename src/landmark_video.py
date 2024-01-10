@@ -36,7 +36,7 @@ parser = argparse.ArgumentParser(
                  "and outputs a video annotated with pose landmarks to the given "
                  "file path"))
 parser.add_argument('input_file')
-parser.add_argument('--output-file', '-o', dest='output_file')
+parser.add_argument('-o', '--output-file', dest='output_file')
 parser.add_argument('-v', '--verbose',
                     choices=['true', 'false'], default='false', dest='verbose')
 parser.add_argument("-f", "--fps", type=int, default=None, dest='fps',
