@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """ landmark_video.py
 Estimates the pose of a single person in the given video file,
 and outputs a video annotated with pose landmarks to the given
@@ -5,7 +6,6 @@ file path.
 Optionally scales the output video and reencodes it with a
 given codec
 """
-#!/usr/bin/python
 
 # cv2 - computer vision lib
 # mediapipe - google's toolkit for applying AI to media
