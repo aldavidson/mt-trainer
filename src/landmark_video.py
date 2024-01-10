@@ -102,8 +102,11 @@ while cap.isOpened():
 
     # process the frame
     if args.verbose == 'true':
-        print('Frame ', cap.get(cv2.CAP_PROP_POS_FRAMES),
-              ' of ', cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        line = 'Frame ' + str(cap.get(cv2.CAP_PROP_POS_FRAMES)) + \
+               ' of ' + str(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        sys.stdout.write(line)
+        sys.stdout.write('\r')
+        sys.stdout.flush()
 
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image.flags.writeable = False
@@ -128,3 +131,7 @@ while cap.isOpened():
 pose.close()
 cap.release()
 out.release()
+
+# print output file
+print('\n')
+print(output_file, ' - ', os.path.getsize(output_file), ' bytes')
