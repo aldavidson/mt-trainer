@@ -1,30 +1,40 @@
+""" landmark_video.py
+Estimates the pose of a single person in the given video file,
+and outputs a video annotated with pose landmarks to the given
+file path.
+Optionally scales the output video and reencodes it with a
+given codec
+"""
 #!/usr/bin/python
 
 # cv2 - computer vision lib
 # mediapipe - google's toolkit for applying AI to media
 import argparse
+import os
+import sys
+
 import cv2
 import mediapipe as mp
-import numpy as np
-import os
 
 # shorthands for lib classes
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
 pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
-
-def default_output_file_path(input_file):
-    root, ext = os.path.splitext(input_file)
+def default_output_file_path(path):
+    """Append -output before the file extension in the given file path"""
+    root, ext = os.path.splitext(path)
     out_path = root + '-output'
-    if ext != None:
+    if ext is not None:
         out_path += ext
     return out_path
 
 
 parser = argparse.ArgumentParser(
     prog='landmark_video.py',
-    description='Estimates the pose of a single person in the given video file, outputs an annotated video to the given file path')
+    description=("Estimates the pose of a single person in the given video file, "
+                 "and outputs a video annotated with pose landmarks to the given "
+                 "file path"))
 parser.add_argument('input_file')
 parser.add_argument('--output-file', '-o', dest='output_file')
 parser.add_argument('-v', '--verbose',
@@ -34,18 +44,21 @@ parser.add_argument("-f", "--fps", type=int, default=None, dest='fps',
 parser.add_argument("-c", "--codec", type=str, default=None,
                     help="Codec of output video", dest='codec')
 parser.add_argument("-W", "--width", dest='output_width', type=int, default=None,
-                    help="Width of output. Default is width of input. Takes precedence over -s/--scale.")
+                    help=("Width of output. Default is width of input. "
+                          "Takes precedence over -s/--scale."))
 parser.add_argument("-H", "--height", dest='output_height', type=int, default=None,
-                    help="Height of output. Default is height of input. Takes precedence over -s/--scale")
+                    help=("Height of output. Default is height of input."
+                          "Takes precedence over -s/--scale"))
 parser.add_argument("-s", "--scale", dest='output_scale', type=int, default=100,
-                    help="Scale output by this many percent. Default is 100. Has no effect if the above width & height values are set.")
+                    help=("Scale output by this many percent. Default is 100. "
+                          "Has no effect if the above width & height values are set."))
 args = parser.parse_args()
 input_file = args.input_file
 output_file = args.output_file or default_output_file_path(input_file)
 
 # read the input video
 cap = cv2.VideoCapture(input_file)
-if cap.isOpened() == False:
+if cap.isOpened() is False:
     print("Error opening video stream or file")
     raise TypeError
 
@@ -58,8 +71,12 @@ output_height = args.output_height or int(
     frame_height * 0.01 * args.output_scale)
 
 
-def decode_fourcc(cc):
-    return "".join([chr((int(cc) >> 8 * i) & 0xFF) for i in range(4)])
+def decode_fourcc(four_cc_int_value):
+    """FourCC values from a video file are packed into an int.
+    We need to decode them into four actual characters if we
+    want to re-use them.
+    """
+    return "".join([chr((int(four_cc_int_value) >> 8 * i) & 0xFF) for i in range(4)])
 
 
 output_codec = args.codec or decode_fourcc(cap.get(cv2.CAP_PROP_FOURCC))
@@ -72,7 +89,7 @@ out = cv2.VideoWriter(output_file, cv2.VideoWriter_fourcc(
 if not out.isOpened():
     print("Error: Could not create the output video file.")
     cap.release()
-    exit()
+    sys.exit()
 
 print('writing ', cap.get(cv2.CAP_PROP_FRAME_COUNT), ' frames of annotated video to ', output_file,
       ' at ', output_fps, 'fps, ', output_width, 'x', output_height, ' with codec ', output_codec)
