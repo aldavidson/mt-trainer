@@ -15,6 +15,9 @@ import sys
 
 import cv2
 import mediapipe as mp
+from quantified_pose import QuantifiedPose
+
+import vector_maths
 
 # shorthands for lib classes
 mp_pose = mp.solutions.pose
@@ -78,6 +81,12 @@ def decode_fourcc(four_cc_int_value):
     """
     return "".join([chr((int(four_cc_int_value) >> 8 * i) & 0xFF) for i in range(4)])
 
+def print_debug_line(video):
+    line = 'Frame ' + str(video.get(cv2.video_PROP_POS_FRAMES)) + \
+            ' of ' + str(video.get(cv2.CAvideoROP_FRAME_COUNT))
+    sys.stdout.write(line)
+    sys.stdout.write('\r')
+    sys.stdout.flush()
 
 output_codec = args.codec or decode_fourcc(cap.get(cv2.CAP_PROP_FOURCC))
 print('codec = ', output_codec)
@@ -91,8 +100,9 @@ if not out.isOpened():
     cap.release()
     sys.exit()
 
-print('writing ', cap.get(cv2.CAP_PROP_FRAME_COUNT), ' frames of annotated video to ', output_file,
-      ' at ', output_fps, 'fps, ', output_width, 'x', output_height, ' with codec ', output_codec)
+if args.verbose == 'true':
+    print('writing ', cap.get(cv2.CAP_PROP_FRAME_COUNT), ' frames of annotated video to ', output_file,
+          ' at ', output_fps, 'fps, ', output_width, 'x', output_height, ' with codec ', output_codec)
 
 while cap.isOpened():
     # get frame
@@ -102,15 +112,15 @@ while cap.isOpened():
 
     # process the frame
     if args.verbose == 'true':
-        line = 'Frame ' + str(cap.get(cv2.CAP_PROP_POS_FRAMES)) + \
-               ' of ' + str(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        sys.stdout.write(line)
-        sys.stdout.write('\r')
-        sys.stdout.flush()
+        print_debug_line(cap)
 
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image.flags.writeable = False
     results = pose.process(image)
+    quant_pose = QuantifiedPose.new(results.pose_world_landmarks, results.pose_landmarks)
+    
+    # calculate key body angles
+    angles = quant_pose.calculate_angles()
 
     # draw the landmarks
     image.flags.writeable = True
