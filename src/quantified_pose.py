@@ -1,5 +1,5 @@
 import mediapipe as mp
-from .vector_maths import *
+import vector_maths
 
 class QuantifiedPose:
   mp_pose = mp.solutions.pose
@@ -13,7 +13,7 @@ class QuantifiedPose:
                   mp_pose.PoseLandmark.LEFT_KNEE.value,
                   mp_pose.PoseLandmark.LEFT_HIP.value),
     
-    "left_hip_elevation": (mp_pose.PoseLandmark.LEFT_KNEE.value,
+    "left_hip_extension": (mp_pose.PoseLandmark.LEFT_KNEE.value,
                   mp_pose.PoseLandmark.LEFT_HIP.value,
                   mp_pose.PoseLandmark.LEFT_SHOULDER.value),
     
@@ -41,7 +41,7 @@ class QuantifiedPose:
                   mp_pose.PoseLandmark.RIGHT_KNEE.value,
                   mp_pose.PoseLandmark.RIGHT_HIP.value),
     
-    "right_hip_elevation": (mp_pose.PoseLandmark.RIGHT_KNEE.value,
+    "right_hip_extension": (mp_pose.PoseLandmark.RIGHT_KNEE.value,
                   mp_pose.PoseLandmark.RIGHT_HIP.value,
                   mp_pose.PoseLandmark.RIGHT_SHOULDER.value),
     
@@ -74,6 +74,9 @@ class QuantifiedPose:
   def calculate_angles(self):
     angles = {}
     for angle in self.ANGLE_LANDMARKS:
-      landmarks = map( lambda l: landmark_to_vector(self.world_landmarks.landmark[l]), self.ANGLE_LANDMARKS[angle])
-      angles[angle] = angle_between( *landmarks )
+      landmarks = map( lambda l: vector_maths.landmark_to_vector(self.world_landmarks.landmark[l]), self.ANGLE_LANDMARKS[angle])
+      angles[angle] = vector_maths.angle_between( *landmarks )
     return angles
+
+  def rounded_angles(self):
+    return dict( (k, round(v,1)) for k,v in self.angles.items())
