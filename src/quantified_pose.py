@@ -79,4 +79,4 @@ class QuantifiedPose:
     return angles
 
   def rounded_angles(self):
-    return dict( (k, round(v,1)) for k,v in self.angles.items())
+    return dict( (k, round(v,0)) for k,v in self.angles.items())

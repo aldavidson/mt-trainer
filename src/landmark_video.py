@@ -13,12 +13,14 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from tabnanny import verbose
+
+from PIL import Image, ImageDraw, ImageFont
 
 import cv2
 import mediapipe as mp
 import numpy as np
 from quantified_pose import QuantifiedPose
+from text_rendering import Cv2TextRenderer, PILTextRenderer
 
 # shorthands for lib classes
 mp_pose = mp.solutions.pose
@@ -75,14 +77,19 @@ output_height = args.output_height or int(
     frame_height * 0.01 * args.output_scale)
 
 # dimensions of the annotation panel
-font_face = cv2.FONT_HERSHEY_PLAIN
+font_face = "SourceSans3-Regular.ttf" # cv2.FONT_HERSHEY_PLAIN
+font_height = 12
 font_scale = 0.3
 color = (250,250,250)
 
-# length of longest label + 2 spaces + 3 digits + degrees symbol
+text_renderer = PILTextRenderer("SourceSans3-Regular.ttf", "./assets/")
 length_of_longest_label = max(len(k) for k,v in QuantifiedPose.ANGLE_LANDMARKS.items()) + 2 + 4
 
-(label_width, label_height), baseline = cv2.getTextSize(("W" * length_of_longest_label), font_face, font_scale, 1)
+# length of longest label + 2 spaces + 3 digits + degrees symbol
+label_width = length_of_longest_label * 14
+
+# (label_width, label_height), baseline = cv2.getTextSize(("W" * length_of_longest_label), font_face, font_scale, 1)
+
 panel_width = label_width + 4
 panel_height = output_height
 
@@ -95,6 +102,21 @@ def decode_fourcc(four_cc_int_value):
 
 def print_debug_line(line):
     sys.stdout.write(str(line) + ' ')
+
+# load the nice TTF font for use with pillow
+nice_font = ImageFont.truetype("./assets/SourceSans3-Regular.ttf", 10) 
+# # # 
+def draw_text_with_pillow(image, text, origin, color='#FFF'):
+#     # convert color format to PIL-compatible
+#     cv2_im_rgb = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
+#      # Pass the image to PIL  
+#     pil_im = Image.fromarray(cv2_im_rgb)
+    # draw the text
+    draw = ImageDraw.Draw(image) #pil_im
+    draw.text(origin, text, font=nice_font, fill=color)
+    # convert it back to OpenCV format
+    # return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+    return image
 
 output_codec = args.codec or decode_fourcc(cap.get(cv2.CAP_PROP_FOURCC))
 
@@ -116,20 +138,29 @@ if args.verbose == 'true':
 
 while cap.isOpened():
     # get frame
-    ret, image = cap.read()
+    ret, input_image = cap.read()
     if not ret:
         break
-
-    # process the frame
-
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    image.flags.writeable = False
-    results = pose.process(image)
 
     if args.verbose == 'true':
         print_debug_line('Frame ' + str(cap.get(cv2.CAP_PROP_POS_FRAMES)) + \
                          ' of ' + str(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
     
+    # process the frame
+    input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
+    input_image.flags.writeable = True
+    
+    results = pose.process(input_image)
+
+    # resize the frame if needed
+    if output_width != frame_width or output_height != frame_height:
+        # Resize the frame
+        dim = (output_width, output_height)
+        input_image = cv2.resize(input_image, dim, interpolation=cv2.INTER_AREA)
+    
+    # convert it to cv2 BGR format
+    cv2_image_with_landmarks = cv2.cvtColor(input_image, cv2.COLOR_RGB2BGR)
+        
     # if we didn't detect a pose, say so and skip
     if not results.pose_landmarks:
         if args.verbose == 'true':
@@ -142,55 +173,101 @@ while cap.isOpened():
         angles = quant_pose.calculate_angles()
 
         # draw the landmarks
-        image.flags.writeable = True
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         mp_drawing.draw_landmarks(
-            image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-        
+            cv2_image_with_landmarks, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
         
 
-    # resize the frame if needed
-    if output_width != frame_width or output_height != frame_height:
-        # Resize the frame
-        dim = (output_width, output_height)
-        image = cv2.resize(image, dim, interpolation=cv2.INTER_AREA)
-
-    # add the annotation panel
-    
-    # Create a black image with extra width to hold both
-    # max label size is 40ch (32ch label, 4 for value, 4 spaces for padding)
-    # with 10px / char, that's 400px wide
-    image_with_panel = np.zeros((output_height, output_width + panel_width, 3), np.uint8)
-    
-    # Copy in the annotated frame at top-left
-    image_with_panel[0:output_height, 0:output_width] = image
-    
-    if results.pose_landmarks:
+        # Create a black image with extra width to hold input_image + annotation panel
+        # max label size is 40ch (32ch label, 4 for value, 4 spaces for padding)
+        # with 10px / char, that's 400px wide
+        output_image_with_panel = np.zeros((output_height, output_width+panel_width, 3), np.uint8)
+        output_image_with_panel = cv2.cvtColor( output_image_with_panel, cv2.COLOR_RGB2BGR)
+        
+        annotation_panel = np.zeros((output_height, panel_width, 3), np.uint8)
+        # convert color format to PIL-compatible
+        cv2_im_rgb = cv2.cvtColor(annotation_panel,cv2.COLOR_BGR2RGB)
+         # Pass the image to PIL  
+        pil_annotation_panel = Image.fromarray(cv2_im_rgb)
+        
         # Write text for each angle
-        top = 1
+        top = 10
         
         for label, value in quant_pose.rounded_angles().items():
             # left-align the label
-            cv2.putText(image_with_panel, 
-                        label,
-                        (output_width + 2, top),
-                        font_face,
-                        font_scale,
-                        color,
-                        1)
+            # cv2.putText(annotation_panel, 
+            #             label,
+            #             (2, top),
+            #             cv2.FONT_HERSHEY_SIMPLEX,
+            #             font_scale,
+            #             color,
+            #             1)
+            # pil_annotation_panel = draw_text_with_pillow(pil_annotation_panel, label, (output_width + 2, top))
+            
+            # pil_image_with_panel = text_renderer.render(
+            #     label,
+            #     pil_image_with_panel,
+            #     top=top,
+            #     left=(output_width + 2),
+            #     pixel_height=font_height,
+            #     color="#FFF",
+            #     thickness=1,
+            # )
+            
+            pil_annotation_panel = text_renderer.render(
+                label,
+                pil_annotation_panel,
+                top=top,
+                left=(output_width + 2),
+                color="#FFF",
+                font=nice_font,
+            )
+            
             # right-align the numerical value
-            (value_width, value_height), baseline = cv2.getTextSize(str(value), font_face, font_scale, 1)
-            cv2.putText(image_with_panel, 
-                        str(value), 
-                        ((output_width + panel_width + 2 - (value_width + baseline) - 1), top), 
-                        font_face,
-                        font_scale,
-                        color,
-                        1)
-            top = top + value_height + 2
+            value_string = str(int(value)) + '°'
+            (value_width, value_height), baseline = cv2.getTextSize(value_string, cv2.FONT_HERSHEY_SIMPLEX, font_scale, 1)
+            # value_width = text_renderer.pixel_width(
+            #     str(value),
+            #     pil_annotation_panel,
+            #     font_height,
+            #     font_face=font_face)
+            
+            # cv2.putText(annotation_panel, 
+            #             value_string, 
+            #             ((panel_width - value_width - 1), top), 
+            #             cv2.FONT_HERSHEY_SIMPLEX,
+            #             font_scale,
+            #             color,
+            #             1)
+            
+            # pil_annotation_panel = draw_text_with_pillow(pil_annotation_panel, str(value), ((output_width + panel_width + 2 - (value_width) - 1), top))
+            
+            pil_annotation_panel = text_renderer.render(
+                str(value),
+                pil_annotation_panel,
+                top=top,
+                left=(panel_width - value_width - 2),
+                align='right',
+                pixel_height=10,
+                color="#FFF",
+                thickness=1,
+                font=nice_font,
+            )
+            
+            top = top + 14
 
+        # convert it back to OpenCV format
+        cv2_annotation_panel = cv2.cvtColor(np.array(pil_annotation_panel), cv2.COLOR_RGB2BGR)
+        
+        # and copy it into the output image 
+        output_image_with_panel[0:output_height, output_width:(output_width+panel_width)] = cv2_annotation_panel
+        # output_image_with_panel[0:output_height, output_width:(output_width+panel_width)] = annotation_panel
+            
+    # Copy in the annotated frame at top-left
+    output_image_with_panel[0:output_height, 0:output_width] = cv2_image_with_landmarks
+    
     # write the frame out
-    out.write(image_with_panel)
+    out.write(output_image_with_panel)
+    
     
     # wind the stdout buffer back a line if needed & flush
     if args.verbose == 'true':
