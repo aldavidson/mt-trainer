@@ -8,6 +8,8 @@ import mediapipe as mp
 import numpy as np
 import os
 
+from frame_processor import FrameProcessor
+
 # shorthands for lib classes
 mp_pose = mp.solutions.pose
 mp_drawing = mp.solutions.drawing_utils
@@ -37,21 +39,22 @@ output_file=args.output_file or default_output_file_path(input_file)
 # read the image
 mp_image = mp.Image.create_from_file(input_file)
 
-# convert the image to the right format for pose recognition
-converted_image = cv2.cvtColor(mp_image.numpy_view(), cv2.COLOR_BGR2RGB)
+# convert the image to the right format for pose recognition (RGB)
+rgb_image = cv2.cvtColor(mp_image.numpy_view(), cv2.COLOR_BGR2RGB)
+
+processor = FrameProcessor()
 
 # detect the pose
-results = pose.process(converted_image)
+results = processor.pose_landmarks(rgb_image)
 
 # Draw landmarks on the image itself
-# Can only do this on a copy - the mp_image.numpy_view() is immutable
-annotated_image = np.copy(mp_image.numpy_view())
-converted_annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
-mp_drawing.draw_landmarks(converted_annotated_image, results.pose_landmarks, mp_pose.POSE_CONNECTIONS, landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style())
+# Returns a copy - the mp_image.numpy_view() is immutable
+# converted_annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
+rgb_image_with_landmarks = processor.draw_landmarks(results.pose_landmarks, rgb_image)
 
 # Save the annotated image
 print('writing annotated image to ', output_file)
-cv2.imwrite(output_file, converted_annotated_image)
+cv2.imwrite(output_file, rgb_image_with_landmarks)
 
 # plot the pose as a connected skeleton in matlib3d
 if args.plot_3d == 'true':
