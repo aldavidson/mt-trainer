@@ -84,3 +84,6 @@ class QuantifiedPose:
 
     def rounded_angles(self):
         return dict((k, round(v, 0)) for k, v in self.angles.items())
+
+    def length_of_longest_label(self):
+        return max(len(key) for key, _value in self.ANGLE_LANDMARKS.items())

@@ -23,13 +23,18 @@ mp_drawing_styles = mp.solutions.drawing_styles
 pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 
-def default_output_file_path(input_file_path):
-    ''' Construct a default output file path from the given input file path '''
-    root, ext = os.path.splitext(input_file_path)
-    out_path = root + '-output'
+def insert_suffix_before_extension(path, suffix):
+    ''' Insert the given suffix before the file extension og the given path '''
+    root, ext = os.path.splitext(path)
+    out_path = root + suffix
     if ext is not None:
         out_path += ext
     return out_path
+
+
+def default_output_file_path(input_file_path):
+    ''' Construct a default output file path from the given input file path '''
+    return insert_suffix_before_extension(input_file_path, '-output')
 
 
 parser = argparse.ArgumentParser(
@@ -66,6 +71,14 @@ pose = processor.quantify_pose(rgb_image)
 # converted_annotated_image = cv2.cvtColor(annotated_image, cv2.COLOR_BGR2RGB)
 rgb_image_with_landmarks = processor.draw_landmarks(pose.image_landmarks,
                                                     rgb_image)
+
+# render the body angles to a separate panel
+rgb_panel = processor.render_angles(pose, None)
+
+# Save the panel as a separate image
+panel_path = insert_suffix_before_extension(output_file, '-panel')
+print('writing panel out to ', panel_path)
+cv2.imwrite(panel_path, rgb_panel)
 
 # Save the annotated image
 print('writing annotated image to ', output_file)

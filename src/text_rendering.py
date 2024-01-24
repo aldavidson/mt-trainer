@@ -16,6 +16,11 @@ class Cv2TextRenderer:
                 cv2.getFontScaleFromHeight(font_face, pixel_height, thickness),
                 color,
                 thickness)
+  
+  def pixel_width(self, string, pixel_height, font_face=cv2.FONT_HERSHEY_COMPLEX, thickness=1):
+    font_scale = cv2.getFontScaleFromHeight(font_face, pixel_height, thickness)
+    (value_width, _value_height), _baseline = cv2.getTextSize(string, font_face, font_scale, 1)
+    return value_width
 
 class PILTextRenderer:
   DEFAULT_FONT_FACE="SourceSans3-Regular.ttf"
