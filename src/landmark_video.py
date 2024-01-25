@@ -176,17 +176,22 @@ while cap.isOpened():
         mp_drawing.draw_landmarks(
             cv2_image_with_landmarks, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
         
-
-        # Create a black image with extra width to hold input_image + annotation panel
-        # max label size is 40ch (32ch label, 4 for value, 4 spaces for padding)
+        # Create a black image with extra width to hold 
+        # input_image + annotation panel
+        # max label size is 40ch (32ch label, 4 for value,
+        # 4 spaces for padding)
         # with 10px / char, that's 400px wide
-        output_image_with_panel = np.zeros((output_height, output_width+panel_width, 3), np.uint8)
-        output_image_with_panel = cv2.cvtColor( output_image_with_panel, cv2.COLOR_RGB2BGR)
+        output_image_with_panel = np.zeros(
+            (output_height, output_width + panel_width, 3),
+            np.uint8
+        )
+        output_image_with_panel = cv2.cvtColor(output_image_with_panel,
+                                               cv2.COLOR_RGB2BGR)
         
         annotation_panel = np.zeros((output_height, panel_width, 3), np.uint8)
         # convert color format to PIL-compatible
-        cv2_im_rgb = cv2.cvtColor(annotation_panel,cv2.COLOR_BGR2RGB)
-         # Pass the image to PIL  
+        cv2_im_rgb = cv2.cvtColor(annotation_panel, cv2.COLOR_BGR2RGB)
+        # Pass the image to PIL  
         pil_annotation_panel = Image.fromarray(cv2_im_rgb)
         
         # Write text for each angle

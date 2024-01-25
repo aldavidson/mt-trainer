@@ -75,14 +75,14 @@ rgb_image_with_landmarks = processor.draw_landmarks(pose.image_landmarks,
 # render the body angles to a separate panel
 rgb_panel = processor.render_angles(pose, None)
 
-# Save the panel as a separate image
-panel_path = insert_suffix_before_extension(output_file, '-panel')
-print('writing panel out to ', panel_path)
-cv2.imwrite(panel_path, rgb_panel)
+# Combine the two images into one
+combined_image = processor.append_image(rgb_image_with_landmarks, rgb_panel)
 
-# Save the annotated image
-print('writing annotated image to ', output_file)
-cv2.imwrite(output_file, rgb_image_with_landmarks)
+print('writing annotated image to ', args.output_file)
+cv2.imwrite(
+    args.output_file,
+    combined_image
+)
 
 # plot the pose as a connected skeleton in matlib3d
 if args.plot_3d == 'true':
