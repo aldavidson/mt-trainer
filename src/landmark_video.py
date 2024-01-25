@@ -100,7 +100,7 @@ def print_debug_line(line):
 
 processor = FrameProcessor()
 # need to do this now, so that we can work out the output width for the video
-FONT_SIZE = 12
+FONT_SIZE = 8
 annotation_panel = processor.make_panel_for_angles(font_size=FONT_SIZE)
 PADDING = 2
 panel_width = annotation_panel.shape[1]
@@ -144,7 +144,7 @@ while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
 
     pose = processor.quantify_pose(input_image)
 
-    panel = processor.make_panel_for_angles()
+    panel = processor.make_panel_for_angles(FONT_SIZE)
 
     # if we didn't detect a pose, say so and skip
     if not pose.world_landmarks:

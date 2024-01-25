@@ -106,7 +106,7 @@ class FrameProcessor:
         ''' Make a panel just big enough to hold the body angles '''
 
         # height is number of labels * (height of label + space between each)
-        height = len(QuantifiedPose.ANGLE_LANDMARKS.keys()) * (font_size + 2)
+        height = len(QuantifiedPose.ANGLE_LANDMARKS.keys()) * (font_size + 3)
 
         # width is font_size * 
         # (length of longest label + 2 chars space + 3 chars for angle)
