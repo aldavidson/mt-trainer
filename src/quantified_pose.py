@@ -89,6 +89,7 @@ class QuantifiedPose:
 
     @staticmethod
     def length_of_longest_label():
-        return max(
-            len(key) for key, _ in QuantifiedPose.ANGLE_LANDMARKS.items()
-        )
+        return 24
+        # return max(
+        #     len(key) for key, _ in QuantifiedPose.ANGLE_LANDMARKS.items()
+        # )

@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from time import time
 
 
 import cv2
@@ -95,7 +96,8 @@ def decode_fourcc(four_cc_int_value):
 
 
 def print_debug_line(line):
-    sys.stdout.write(str(line) + ' ')
+    if args.verbose == 'true':
+        sys.stdout.write(str(line) + ' ')
 
 
 processor = FrameProcessor()
@@ -120,67 +122,84 @@ if not out.isOpened():
     cap.release()
     sys.exit()
 
-if args.verbose == 'true':
-    print('writing', max_frames, 'frames of annotated video to', output_file,
-          'at', output_fps, 'fps,', output_width, 'x', output_height,
-          'with codec', output_codec, ' shape with panel =',
-          (annotated_video_width, output_height))
-    print('')
+print_debug_line('writing ' + str(max_frames) + ' frames of annotated video to '
+        + str(output_file) + ' at ' + str(output_fps) + ' fps + '  + str(output_width) + 
+        ' x ' + str(output_height) + ' with codec ' + str(output_codec) + 
+        '  shape with panel = ' + str( (annotated_video_width, output_height) ))
 
 
 while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
+    start = time()
+    
     # get frame
     ret, input_image = cap.read()
     if not ret:
         break
 
-    if args.verbose == 'true':
-        print_debug_line('Frame ' + str(cap.get(cv2.CAP_PROP_POS_FRAMES)) +
-                         ' of ' + str(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
+    print_debug_line('\nFrame ' + str(cap.get(cv2.CAP_PROP_POS_FRAMES)) +
+                     ' of ' + str(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
+    print_debug_line('read frame in ' + str(time() - start) + 's')
 
     # process the frame
     input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
     input_image.flags.writeable = True
 
+    process_start = time()
     pose = processor.quantify_pose(input_image)
+    print_debug_line('quantified pose in ' + str(time() - process_start) + 's')
 
+    panel_start = time()
     panel = processor.make_panel_for_angles(FONT_SIZE)
+    print_debug_line('made panel in ' + str(time() - panel_start) + 's')
 
     # if we didn't detect a pose, say so and skip
     if not pose.world_landmarks:
         # we'll just output the input image
         output_image = input_image
 
-        if args.verbose == 'true':
-            print_debug_line("No pose detected")
+        print_debug_line("No pose detected")
         continue
     else:
         # draw the landmarks
+        landmark_start = time()
         output_image = processor.draw_landmarks(
             pose.image_landmarks,
             input_image
         )
-
+        print_debug_line('landmarks drawn in ' + str(time() - landmark_start) + 's')
+        
         # render the body angles into the panel
+        angles_start = time()
         panel = processor.render_angles(pose, panel, font_size=FONT_SIZE)
+        print_debug_line('angles rendered in ' + str(time() - angles_start) + 's' )
 
     # resize the frame if needed
     if output_width != frame_width or output_height != frame_height:
         # Resize the frame
         dim = (output_width, output_height)
+        resize_start = time()
         output_image = cv2.resize(
             output_image, dim, interpolation=cv2.INTER_AREA)
-
+        print_debug_line('resized in ' + str(time() - resize_start) + 's')
+        
     # combine the landmarked image and annotation panel into one
+    combine_start = time()
     output_image_with_panel = processor.append_image(output_image, panel)
+    print_debug_line('images combined in ' + str(time() - combine_start) + 's')
 
     # write the frame out
+    write_start = time()
     out.write(cv2.cvtColor(output_image_with_panel, cv2.COLOR_RGB2BGR))
+    print_debug_line('frame written in ' + str(time() - write_start) + 's')
 
+    print_debug_line('\n')
+    
     # wind the stdout buffer back a line if needed & flush
     if args.verbose == 'true':
         sys.stdout.write('\r')
         sys.stdout.flush()
+        
+    print_debug_line('total frame time ' + str(time() - start) + 's')
 
 # cleanup
 processor.pose_landmarker.close()
