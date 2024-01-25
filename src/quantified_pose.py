@@ -1,5 +1,6 @@
 import mediapipe as mp
 import vector_maths
+import pdb
 
 class QuantifiedPose:
     mp_pose = mp.solutions.pose
@@ -68,7 +69,8 @@ class QuantifiedPose:
         if angles is not None:
             self.angles = angles
         else:
-            self.angles = self.calculate_angles()
+            if self.world_landmarks is not None:
+                self.angles = self.calculate_angles()
    
     def calculate_angles(self):
         angles = {}
@@ -85,5 +87,8 @@ class QuantifiedPose:
     def rounded_angles(self):
         return dict((k, round(v, 0)) for k, v in self.angles.items())
 
-    def length_of_longest_label(self):
-        return max(len(key) for key, _value in self.ANGLE_LANDMARKS.items())
+    @staticmethod
+    def length_of_longest_label():
+        return max(
+            len(key) for key, _ in QuantifiedPose.ANGLE_LANDMARKS.items()
+        )

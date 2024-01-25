@@ -63,6 +63,7 @@ rgb_image = cv2.cvtColor(mp_image.numpy_view(), cv2.COLOR_BGR2RGB)
 
 processor = FrameProcessor()
 
+
 # detect & quantify the pose
 pose = processor.quantify_pose(rgb_image)
 
@@ -73,7 +74,7 @@ rgb_image_with_landmarks = processor.draw_landmarks(pose.image_landmarks,
                                                     rgb_image)
 
 # render the body angles to a separate panel
-rgb_panel = processor.render_angles(pose, None)
+rgb_panel = processor.render_angles(pose)
 
 # Combine the two images into one
 combined_image = processor.append_image(rgb_image_with_landmarks, rgb_panel)

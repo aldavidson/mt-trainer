@@ -21,6 +21,9 @@ class FrameProcessor:
             min_tracking_confidence=min_tracking_confidence
         )
 
+    def release(self):
+        self.pose_landmarker.close()
+
     def quantify_pose(self, rgb_image):
         '''
           Return a QuantifiedPose object encapsulating all that has been
@@ -64,8 +67,7 @@ class FrameProcessor:
         renderer = text_renderer or Cv2TextRenderer()
 
         if image is None:
-            image = self.make_panel_for_angles(quantified_pose,
-                                               font_size=font_size)
+            image = self.make_panel_for_angles(font_size=font_size)
 
         label_top = top + font_size
         for label, value in quantified_pose.rounded_angles().items():
@@ -100,16 +102,15 @@ class FrameProcessor:
         return image
 
     def make_panel_for_angles(self,
-                              quantified_pose,
                               font_size=12):
         ''' Make a panel just big enough to hold the body angles '''
 
         # height is number of labels * (height of label + space between each)
-        height = len(quantified_pose.angles.keys()) * (font_size + 2)
+        height = len(QuantifiedPose.ANGLE_LANDMARKS.keys()) * (font_size + 2)
 
         # width is font_size * 
         # (length of longest label + 2 chars space + 3 chars for angle)
-        width = font_size * (quantified_pose.length_of_longest_label() + 5)
+        width = font_size * (QuantifiedPose.length_of_longest_label() + 5)
         image = np.zeros((height, width, 3), np.uint8)
 
         return image
