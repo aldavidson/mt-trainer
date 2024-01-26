@@ -15,17 +15,10 @@ import os
 import sys
 from time import time
 
-
 import cv2
 import mediapipe as mp
-import numpy as np
 
 from frame_processor import FrameProcessor
-
-# shorthands for lib classes
-mp_pose = mp.solutions.pose
-mp_drawing = mp.solutions.drawing_utils
-pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 
 def default_output_file_path(path):
@@ -123,14 +116,14 @@ if not out.isOpened():
     sys.exit()
 
 print_debug_line('writing ' + str(max_frames) + ' frames of annotated video to '
-        + str(output_file) + ' at ' + str(output_fps) + ' fps + '  + str(output_width) + 
-        ' x ' + str(output_height) + ' with codec ' + str(output_codec) + 
-        '  shape with panel = ' + str( (annotated_video_width, output_height) ))
+                 + str(output_file) + ' at ' + str(output_fps) + ' fps + ' + str(output_width) +
+                 ' x ' + str(output_height) + ' with codec ' + str(output_codec) +
+                 '  shape with panel = ' + str((annotated_video_width, output_height)))
 
 
 while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
     start = time()
-    
+
     # get frame
     ret, input_image = cap.read()
     if not ret:
@@ -166,12 +159,14 @@ while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
             pose.image_landmarks,
             input_image
         )
-        print_debug_line('landmarks drawn in ' + str(time() - landmark_start) + 's')
-        
+        print_debug_line('landmarks drawn in ' +
+                         str(time() - landmark_start) + 's')
+
         # render the body angles into the panel
         angles_start = time()
         panel = processor.render_angles(pose, panel, font_size=FONT_SIZE)
-        print_debug_line('angles rendered in ' + str(time() - angles_start) + 's' )
+        print_debug_line('angles rendered in ' +
+                         str(time() - angles_start) + 's')
 
     # resize the frame if needed
     if output_width != frame_width or output_height != frame_height:
@@ -181,7 +176,7 @@ while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
         output_image = cv2.resize(
             output_image, dim, interpolation=cv2.INTER_AREA)
         print_debug_line('resized in ' + str(time() - resize_start) + 's')
-        
+
     # combine the landmarked image and annotation panel into one
     combine_start = time()
     output_image_with_panel = processor.append_image(output_image, panel)
@@ -193,12 +188,12 @@ while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
     print_debug_line('frame written in ' + str(time() - write_start) + 's')
 
     print_debug_line('\n')
-    
+
     # wind the stdout buffer back a line if needed & flush
     if args.verbose == 'true':
         sys.stdout.write('\r')
         sys.stdout.flush()
-        
+
     print_debug_line('total frame time ' + str(time() - start) + 's')
 
 # cleanup
