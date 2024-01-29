@@ -63,7 +63,11 @@ class FrameProcessor:
                       color=(255, 255, 255),
                       thickness=1,
                       text_renderer=None):
-
+        ''' 
+            Renders a list of the body pose angles into the given image.
+            Creates a new image if image is None, just big enough to hold
+            all the labels and angles. 
+        '''
         renderer = text_renderer or Cv2TextRenderer()
 
         if image is None:

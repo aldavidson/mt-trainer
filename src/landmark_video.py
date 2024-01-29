@@ -48,17 +48,24 @@ parser.add_argument("-c", "--codec", type=str, default=None,
                     help="Codec of output video", dest='codec')
 parser.add_argument("-W", "--width", dest='output_width',
                     type=int, default=None,
-                    help=("Width of output. Default is width of input. "
+                    help=("Width of video frames in output. "
+                          "Default is width of input. "
                           "Takes precedence over -s/--scale."))
 parser.add_argument("-H", "--height", dest='output_height',
                     type=int, default=None,
-                    help=("Height of output. Default is height of input."
+                    help=("Height of video frames in output."
+                          "Default is height of input."
                           "Takes precedence over -s/--scale"))
 parser.add_argument("-s", "--scale", dest='output_scale',
                     type=int, default=100,
                     help=("Scale output by this many percent. Default is 100. "
                           "Has no effect if the above width & height values"
                           "are set."))
+parser.add_argument('-dc', '--min-detection-confidence', dest='min_detection_confidence',
+                    type=float, default=0.5)
+parser.add_argument('-tc', '--min-tracking-confidence', dest='min_tracking_confidence',
+                    type=float, default=0.5)
+
 args = parser.parse_args()
 input_file = args.input_file
 output_file = args.output_file or default_output_file_path(input_file)
@@ -93,7 +100,10 @@ def print_debug_line(line):
         sys.stdout.write(str(line) + ' ')
 
 
-processor = FrameProcessor()
+processor = FrameProcessor(
+    min_detection_confidence=args.min_detection_confidence,
+    min_tracking_confidence=args.min_tracking_confidence)
+
 # need to do this now, so that we can work out the output width for the video
 FONT_SIZE = 8
 annotation_panel = processor.make_panel_for_angles(font_size=FONT_SIZE)
@@ -130,7 +140,8 @@ while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
         break
 
     print_debug_line('\nFrame ' + str(cap.get(cv2.CAP_PROP_POS_FRAMES)) +
-                     ' of ' + str(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
+                     ' of ' + max_frames + ' (total in input video: ' +
+                     str(cap.get(cv2.CAP_PROP_FRAME_COUNT) + ')'))
     print_debug_line('read frame in ' + str(time() - start) + 's')
 
     # process the frame
