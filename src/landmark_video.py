@@ -19,6 +19,7 @@ import cv2
 import mediapipe as mp
 
 from frame_processor import FrameProcessor
+from text_rendering import Cv2TextRenderer
 
 
 def default_output_file_path(path):
@@ -94,6 +95,8 @@ def print_debug_line(line):
 
 
 processor = FrameProcessor()
+text_renderer = Cv2TextRenderer()
+
 # need to do this now, so that we can work out the output width for the video
 FONT_SIZE = 8
 annotation_panel = processor.make_panel_for_angles(font_size=FONT_SIZE)
@@ -115,21 +118,25 @@ if not out.isOpened():
     cap.release()
     sys.exit()
 
-print_debug_line('writing ' + str(max_frames) + ' frames of annotated video to '
-                 + str(output_file) + ' at ' + str(output_fps) + ' fps + ' + str(output_width) +
-                 ' x ' + str(output_height) + ' with codec ' + str(output_codec) +
-                 '  shape with panel = ' + str((annotated_video_width, output_height)))
+print_debug_line('writing ' + str(max_frames) + 
+                 ' frames of annotated video to ' + str(output_file) +
+                 ' at ' + str(output_fps) + ' fps + ' + str(output_width) +
+                 ' x ' + str(output_height) +
+                 ' with codec ' + str(output_codec) +
+                 '  shape with panel = ' +
+                 str((annotated_video_width, output_height)))
 
 
 while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
     start = time()
 
     # get frame
+    frame_number = cap.get(cv2.CAP_PROP_POS_FRAMES)
     ret, input_image = cap.read()
     if not ret:
         break
 
-    print_debug_line('\nFrame ' + str(cap.get(cv2.CAP_PROP_POS_FRAMES)) +
+    print_debug_line('\nFrame ' + str(frame_number) +
                      ' of ' + str(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
     print_debug_line('read frame in ' + str(time() - start) + 's')
 
@@ -162,9 +169,17 @@ while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
         print_debug_line('landmarks drawn in ' +
                          str(time() - landmark_start) + 's')
 
+        # render the frame number into the panel
+        text_renderer.render('Frame #' + str(int(frame_number)),
+                             panel,
+                             top=FONT_SIZE+2, left=2,
+                             pixel_height=FONT_SIZE,
+                             color=(255, 255, 255))
+
         # render the body angles into the panel
         angles_start = time()
-        panel = processor.render_angles(pose, panel, font_size=FONT_SIZE)
+        panel = processor.render_angles(
+            pose, panel, top=15, font_size=FONT_SIZE)
         print_debug_line('angles rendered in ' +
                          str(time() - angles_start) + 's')
 

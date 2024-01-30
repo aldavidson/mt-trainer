@@ -70,6 +70,7 @@ class FrameProcessor:
             image = self.make_panel_for_angles(font_size=font_size)
 
         label_top = top + font_size
+        
         for label, value in quantified_pose.rounded_angles().items():
             renderer.render(label,
                             image,
@@ -105,8 +106,9 @@ class FrameProcessor:
                               font_size=12):
         ''' Make a panel just big enough to hold the body angles '''
 
-        # height is number of labels * (height of label + space between each)
-        height = len(QuantifiedPose.ANGLE_LANDMARKS.keys()) * (font_size + 3)
+        # height is (number of labels + 1 for frame no) * 
+        # (height of label + space between each)
+        height = (len(QuantifiedPose.ANGLE_LANDMARKS.keys()) + 1) * (font_size + 3)
 
         # width is font_size * 
         # (length of longest label + 2 chars space + 3 chars for angle)
