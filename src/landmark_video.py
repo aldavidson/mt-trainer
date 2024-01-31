@@ -19,6 +19,7 @@ import cv2
 import mediapipe as mp
 
 from frame_processor import FrameProcessor
+from text_rendering import Cv2TextRenderer
 
 
 def default_output_file_path(path):
@@ -40,8 +41,13 @@ parser.add_argument('input_file')
 parser.add_argument('-o', '--output-file', dest='output_file')
 parser.add_argument('-v', '--verbose',
                     choices=['true', 'false'], default='false', dest='verbose')
+parser.add_argument('--from-frame', 
+                    type=int, default=0, dest='from_frame',
+                    help=("Start processing at this frame number"))
 parser.add_argument('-m', '--max-frames',
-                    type=int, default=None, dest='max_frames')
+                    type=int, default=None, dest='max_frames',
+                    help=("Process a maximum of this many frames, starting at"
+                          "--from-frame"))
 parser.add_argument("-f", "--fps", type=int, default=None, dest='fps',
                     help="FPS of output video")
 parser.add_argument("-c", "--codec", type=str, default=None,
@@ -78,7 +84,7 @@ if cap.isOpened() is False:
 
 frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-max_frames = args.max_frames or int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+max_frames = args.max_frames or (int(cap.get(cv2.CAP_PROP_FRAME_COUNT) - args.from_frame))
 output_fps = args.fps or int(cap.get(cv2.CAP_PROP_FPS))
 output_width = args.output_width or int(frame_width * 0.01 * args.output_scale)
 output_height = args.output_height or int(
@@ -125,23 +131,38 @@ if not out.isOpened():
     cap.release()
     sys.exit()
 
-print_debug_line('writing ' + str(max_frames) + ' frames of annotated video to '
-                 + str(output_file) + ' at ' + str(output_fps) + ' fps + ' + str(output_width) +
-                 ' x ' + str(output_height) + ' with codec ' + str(output_codec) +
-                 '  shape with panel = ' + str((annotated_video_width, output_height)))
+print_debug_line('writing ' + str(max_frames) + 
+                 ' frames of annotated video to ' + str(output_file) +
+                 ' at ' + str(output_fps) + ' fps + ' + str(output_width) +
+                 ' x ' + str(output_height) +
+                 ' with codec ' + str(output_codec) +
+                 '  shape with panel = ' +
+                 str((annotated_video_width, output_height)))
 
+output_frame_number = 1
 
-while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
+while (cap.isOpened() and 
+       (cap.get(cv2.CAP_PROP_POS_FRAMES) <= (args.from_frame + max_frames))):
     start = time()
 
     # get frame
+    frame_number = cap.get(cv2.CAP_PROP_POS_FRAMES)
     ret, input_image = cap.read()
     if not ret:
+        print("Couldn't read frame ", frame_number, "from", input_file,
+              "aborting!")
         break
 
-    print_debug_line('\nFrame ' + str(cap.get(cv2.CAP_PROP_POS_FRAMES)) +
-                     ' of ' + max_frames + ' (total in input video: ' +
-                     str(cap.get(cv2.CAP_PROP_FRAME_COUNT) + ')'))
+    # Skip if < from_frame
+    if int(frame_number) < args.from_frame:
+        print_debug_line('Skipping frame ' + str(int(frame_number)))
+        sys.stdout.write('\r')
+        sys.stdout.flush()
+        continue
+
+    print_debug_line('\nFrame ' + str(frame_number) +
+                     ' of ' + str(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
+
     print_debug_line('read frame in ' + str(time() - start) + 's')
 
     # process the frame
@@ -173,9 +194,17 @@ while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
         print_debug_line('landmarks drawn in ' +
                          str(time() - landmark_start) + 's')
 
+        # render the frame number into the panel
+        text_renderer.render('Frame #' + str(int(output_frame_number)),
+                             panel,
+                             top=FONT_SIZE+2, left=2,
+                             pixel_height=FONT_SIZE,
+                             color=(255, 255, 255))
+
         # render the body angles into the panel
         angles_start = time()
-        panel = processor.render_angles(pose, panel, font_size=FONT_SIZE)
+        panel = processor.render_angles(
+            pose, panel, top=15, font_size=FONT_SIZE)
         print_debug_line('angles rendered in ' +
                          str(time() - angles_start) + 's')
 
@@ -196,8 +225,9 @@ while cap.isOpened() and cap.get(cv2.CAP_PROP_POS_FRAMES) <= max_frames:
     # write the frame out
     write_start = time()
     out.write(cv2.cvtColor(output_image_with_panel, cv2.COLOR_RGB2BGR))
-    print_debug_line('frame written in ' + str(time() - write_start) + 's')
-
+    print_debug_line('frame ' + str(output_frame_number) + ' written in ' + str(time() - write_start) + 's')
+    output_frame_number += 1
+    
     print_debug_line('\n')
 
     # wind the stdout buffer back a line if needed & flush
