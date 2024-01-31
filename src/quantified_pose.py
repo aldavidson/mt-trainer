@@ -1,6 +1,5 @@
 import mediapipe as mp
 import vector_maths
-import pdb
 
 class QuantifiedPose:
     mp_pose = mp.solutions.pose
