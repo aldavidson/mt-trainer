@@ -106,7 +106,7 @@ for target_frame in frames:
     while (cap.isOpened() and 
            (cap.get(cv2.CAP_PROP_POS_FRAMES) <= target_frame)):
 
-        frame_number = cap.get(cv2.CAP_PROP_POS_FRAMES)
+        frame_number = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
         ret, frame = cap.read()
         if not ret:
             print("Couldn't read frame ", frame_number,
