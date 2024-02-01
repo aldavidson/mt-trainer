@@ -128,16 +128,18 @@ for target_frame in frames:
     if frame_number == target_frame:
         print_debug_line(' quantifying frame', frame_number)
         pose = processor.quantify_pose(frame)
-        output_file = output_file_name(
-            args.input_file,
-            os.path.join(args.output_dir, args.technique),
-            frame_number)
-        
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(pose.angles, f)
+        if pose.angles:
+            output_file = output_file_name(
+                args.input_file,
+                os.path.join(args.output_dir, args.technique),
+                frame_number)
+            
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(pose.angles, f)
 
-        print(' ', output_file, ' - ', os.path.getsize(output_file), ' bytes')
-
+            print(' ', output_file, ' - ', os.path.getsize(output_file), ' bytes')
+        else:
+            print('no pose found in frame ', frame_number, ', skipping')
 
 print('All done')
 # cleanup
