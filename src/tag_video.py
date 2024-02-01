@@ -8,6 +8,7 @@ given output folder (default: ./poses/training/)
 import argparse
 import json
 import os
+import pdb
 import sys
 
 import cv2
@@ -57,6 +58,7 @@ def output_file_name(input_path, output_dir, frame_no):
             '.json'
     )
 
+
 parser = argparse.ArgumentParser(
     prog='landmark_video.py',
     description=(
@@ -102,11 +104,18 @@ frames = sorted([int(s) for s in args.frames.split(',') if s.strip()])
 next_target_frame = frames[0]
 last_frame = min(frames[-1], int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
 
+print_debug_line('tagging frames', frames, ' as', args.technique)
+
 for target_frame in frames:
+    frame = None
+
+    print_debug_line('target_frame', target_frame)
+    
     while (cap.isOpened() and 
            (cap.get(cv2.CAP_PROP_POS_FRAMES) <= target_frame)):
 
         frame_number = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+        print_debug_line('skipping frame', frame_number, '\r')
         ret, frame = cap.read()
         if not ret:
             print("Couldn't read frame ", frame_number,
@@ -117,6 +126,7 @@ for target_frame in frames:
     print_debug_line('Frame', frame_number)
 
     if frame_number == target_frame:
+        print_debug_line(' quantifying frame', frame_number)
         pose = processor.quantify_pose(frame)
         output_file = output_file_name(
             args.input_file,
@@ -126,7 +136,10 @@ for target_frame in frames:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(pose.angles, f)
 
-        print(output_file, ' - ', os.path.getsize(output_file), ' bytes')
+        print(' ', output_file, ' - ', os.path.getsize(output_file), ' bytes')
 
 
 print('All done')
+# cleanup
+processor.pose_landmarker.close()
+cap.release()
