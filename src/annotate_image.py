@@ -14,7 +14,7 @@ import mediapipe as mp
 import numpy as np
 import os
 
-from frame_processor import FrameProcessor
+from mt_trainer.frame_processor import FrameProcessor
 
 # shorthands for lib classes
 mp_pose = mp.solutions.pose

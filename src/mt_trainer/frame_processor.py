@@ -5,8 +5,8 @@ import pdb
 from PIL import Image, ImageDraw, ImageFont
 
 
-from quantified_pose import QuantifiedPose
-from text_rendering import Cv2TextRenderer
+from mt_trainer.quantified_pose import QuantifiedPose
+from mt_trainer.text_rendering import Cv2TextRenderer
 
 
 class FrameProcessor:

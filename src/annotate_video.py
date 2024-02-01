@@ -18,8 +18,8 @@ from time import time
 import cv2
 import mediapipe as mp
 
-from frame_processor import FrameProcessor
-from text_rendering import Cv2TextRenderer
+from mt_trainer.frame_processor import FrameProcessor
+from mt_trainer.text_rendering import Cv2TextRenderer
 
 
 def default_output_file_path(path):
@@ -31,12 +31,30 @@ def default_output_file_path(path):
     return out_path
 
 
+def decode_fourcc(four_cc_int_value):
+    """FourCC values from a video file are packed into an int.
+    We need to decode them into four actual characters if we
+    want to re-use them.
+    """
+    return "".join(
+        [chr((int(four_cc_int_value) >> 8 * i) & 0xFF) for i in range(4)]
+    )
+
+
+def print_debug_line(*variables):
+    ''' Writes the given line to STDOUT if in verbose mode, otherwise no-op '''
+    if args.verbose == 'true':
+        sys.stdout.write(' '.join([str(var) for var in variables]))
+
+
 parser = argparse.ArgumentParser(
     prog='landmark_video.py',
     description=(
         "Estimates the pose of a single person in the given video file, "
         "and outputs a video annotated with pose landmarks to the given "
-        "file path"))
+        "file path")
+    )
+
 parser.add_argument('input_file')
 parser.add_argument('-o', '--output-file', dest='output_file')
 parser.add_argument('-v', '--verbose',
@@ -67,9 +85,11 @@ parser.add_argument("-s", "--scale", dest='output_scale',
                     help=("Scale output by this many percent. Default is 100. "
                           "Has no effect if the above width & height values"
                           "are set."))
-parser.add_argument('-dc', '--min-detection-confidence', dest='min_detection_confidence',
+parser.add_argument('-dc', '--min-detection-confidence',
+                    dest='min_detection_confidence',
                     type=float, default=0.5)
-parser.add_argument('-tc', '--min-tracking-confidence', dest='min_tracking_confidence',
+parser.add_argument('-tc', '--min-tracking-confidence',
+                    dest='min_tracking_confidence',
                     type=float, default=0.5)
 
 args = parser.parse_args()
@@ -90,25 +110,11 @@ output_width = args.output_width or int(frame_width * 0.01 * args.output_scale)
 output_height = args.output_height or int(
     frame_height * 0.01 * args.output_scale)
 
-
-def decode_fourcc(four_cc_int_value):
-    """FourCC values from a video file are packed into an int.
-    We need to decode them into four actual characters if we
-    want to re-use them.
-    """
-    return "".join(
-        [chr((int(four_cc_int_value) >> 8 * i) & 0xFF) for i in range(4)]
-    )
-
-
-def print_debug_line(line):
-    if args.verbose == 'true':
-        sys.stdout.write(str(line) + ' ')
-
-
 processor = FrameProcessor(
     min_detection_confidence=args.min_detection_confidence,
     min_tracking_confidence=args.min_tracking_confidence)
+
+text_renderer = Cv2TextRenderer()
 
 # need to do this now, so that we can work out the output width for the video
 FONT_SIZE = 8
@@ -131,15 +137,17 @@ if not out.isOpened():
     cap.release()
     sys.exit()
 
-print_debug_line('writing ' + str(max_frames) + 
-                 ' frames of annotated video to ' + str(output_file) +
-                 ' at ' + str(output_fps) + ' fps + ' + str(output_width) +
-                 ' x ' + str(output_height) +
-                 ' with codec ' + str(output_codec) +
-                 '  shape with panel = ' +
-                 str((annotated_video_width, output_height)))
+print_debug_line('writing', max_frames, 
+                 'frames of annotated video to', output_file,
+                 'at', output_fps, 'fps,', output_width,
+                 'x', output_height,
+                 'with codec', output_codec,
+                 ' shape with panel =',
+                 (annotated_video_width, output_height))
+print_debug_line('\n\n')
 
 output_frame_number = 1
+whole_process_start = time()
 
 while (cap.isOpened() and 
        (cap.get(cv2.CAP_PROP_POS_FRAMES) <= (args.from_frame + max_frames))):
@@ -155,44 +163,37 @@ while (cap.isOpened() and
 
     # Skip if < from_frame
     if int(frame_number) < args.from_frame:
-        print_debug_line('Skipping frame ' + str(int(frame_number)))
+        print_debug_line('Skipping frame ',  int(frame_number))
         sys.stdout.write('\r')
         sys.stdout.flush()
         continue
 
-    print_debug_line('\nFrame ' + str(frame_number) +
-                     ' of ' + str(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
-
-    print_debug_line('read frame in ' + str(time() - start) + 's')
+    print_debug_line('Frame ', frame_number,
+                     ' of ', cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     # process the frame
     input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
     input_image.flags.writeable = True
 
-    process_start = time()
     pose = processor.quantify_pose(input_image)
-    print_debug_line('quantified pose in ' + str(time() - process_start) + 's')
 
-    panel_start = time()
     panel = processor.make_panel_for_angles(FONT_SIZE)
-    print_debug_line('made panel in ' + str(time() - panel_start) + 's')
 
     # if we didn't detect a pose, say so and skip
     if not pose.world_landmarks:
         # we'll just output the input image
         output_image = input_image
 
-        print_debug_line("No pose detected")
+        print_debug_line(" No pose detected")
+        sys.stdout.write('\r')
+        sys.stdout.flush()
         continue
     else:
         # draw the landmarks
-        landmark_start = time()
         output_image = processor.draw_landmarks(
             pose.image_landmarks,
             input_image
         )
-        print_debug_line('landmarks drawn in ' +
-                         str(time() - landmark_start) + 's')
 
         # render the frame number into the panel
         text_renderer.render('Frame #' + str(int(output_frame_number)),
@@ -202,41 +203,34 @@ while (cap.isOpened() and
                              color=(255, 255, 255))
 
         # render the body angles into the panel
-        angles_start = time()
         panel = processor.render_angles(
             pose, panel, top=15, font_size=FONT_SIZE)
-        print_debug_line('angles rendered in ' +
-                         str(time() - angles_start) + 's')
 
     # resize the frame if needed
     if output_width != frame_width or output_height != frame_height:
         # Resize the frame
         dim = (output_width, output_height)
-        resize_start = time()
         output_image = cv2.resize(
             output_image, dim, interpolation=cv2.INTER_AREA)
-        print_debug_line('resized in ' + str(time() - resize_start) + 's')
 
     # combine the landmarked image and annotation panel into one
-    combine_start = time()
     output_image_with_panel = processor.append_image(output_image, panel)
-    print_debug_line('images combined in ' + str(time() - combine_start) + 's')
 
     # write the frame out
-    write_start = time()
     out.write(cv2.cvtColor(output_image_with_panel, cv2.COLOR_RGB2BGR))
-    print_debug_line('frame ' + str(output_frame_number) + ' written in ' + str(time() - write_start) + 's')
     output_frame_number += 1
-    
-    print_debug_line('\n')
+
+    print_debug_line(' - Total frame time', str(round(time() - start, 4)) + 's')
 
     # wind the stdout buffer back a line if needed & flush
     if args.verbose == 'true':
         sys.stdout.write('\r')
         sys.stdout.flush()
 
-    print_debug_line('total frame time ' + str(time() - start) + 's')
-
+whole_process_time = time() - whole_process_start
+print_debug_line('\nProcessed', output_frame_number, 
+                 'frames in ', str(round(whole_process_time, 2)) + 's',
+                 '=>', round(output_frame_number / whole_process_time, 2), 'fps')
 # cleanup
 processor.pose_landmarker.close()
 cap.release()

@@ -1,5 +1,5 @@
 import mediapipe as mp
-import vector_maths
+import mt_trainer.vector_maths as vector_maths
 
 class QuantifiedPose:
     mp_pose = mp.solutions.pose
