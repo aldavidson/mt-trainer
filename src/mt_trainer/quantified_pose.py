@@ -92,3 +92,25 @@ class QuantifiedPose:
         # return max(
         #     len(key) for key, _ in QuantifiedPose.ANGLE_LANDMARKS.items()
         # )
+
+    def minus(self, other_pose):
+        '''
+            Subtract the values of angles and both types of landmarks
+            of other_pose from this pose, returning a new copy 
+        '''
+        diff = QuantifiedPose(self.world_landmarks, self.image_landmarks, self.angles)
+
+        for i, landmark in enumerate(diff.world_landmarks.landmark):
+            landmark.x -= other_pose.world_landmarks.landmark[i].x
+            landmark.y -= other_pose.world_landmarks.landmark[i].z
+            landmark.z -= other_pose.world_landmarks.landmark[i].z
+
+        for i, landmark in enumerate(diff.image_landmarks.landmark):
+            landmark.x -= other_pose.image_landmarks.landmark[i].x
+            landmark.y -= other_pose.image_landmarks.landmark[i].z
+            landmark.z -= other_pose.image_landmarks.landmark[i].z
+
+        for key in diff.angles.keys():
+            diff.angles[key] -= other_pose.angles[key]
+
+        return diff
