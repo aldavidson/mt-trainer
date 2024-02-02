@@ -3,3 +3,4 @@
 .vscode
 
 /src/__pycache__/
+src/mt_trainer/__pycache__/
