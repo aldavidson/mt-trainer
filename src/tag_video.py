@@ -134,8 +134,7 @@ for target_frame in frames:
                 os.path.join(args.output_dir, args.technique),
                 frame_number)
             
-            with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(pose.angles, f)
+            pose.save_angles(output_file)
 
             print(' ', output_file, ' - ', os.path.getsize(output_file), ' bytes')
         else:

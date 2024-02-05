@@ -1,6 +1,6 @@
 import mediapipe as mp
 import mt_trainer.vector_maths as vector_maths
-import pdb
+import json
 
 class QuantifiedPose:
     mp_pose = mp.solutions.pose
@@ -73,6 +73,9 @@ class QuantifiedPose:
                 self.angles = self.calculate_angles()
    
     def calculate_angles(self):
+        '''
+            Calculate the body angles from world_landmarks
+        '''
         angles = {}
         for angle, landmark_names in self.ANGLE_LANDMARKS.items():
             landmarks = list(map( 
@@ -89,6 +92,7 @@ class QuantifiedPose:
         return angles
 
     def rounded_angles(self):
+        ''' The body angles, but rounded to integers '''
         return dict((k, round(v, 0)) for k, v in self.angles.items())
 
     @staticmethod
@@ -137,4 +141,10 @@ class QuantifiedPose:
             vector_maths.vector_mod(vector1) * vector_maths.vector_mod(vector2)
         )
         return dot12 / mod1mod2
+
+    def load_angles(self, filepath):
+        self.angles = json.load(open(filepath, 'r', encoding='utf-8'))
     
+    def save_angles(self, filepath):
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(self.angles, f)
