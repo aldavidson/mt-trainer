@@ -14,25 +14,7 @@ import sys
 import cv2
 
 from mt_trainer.frame_processor import FrameProcessor
-
-TECHNIQUES = [
-    "left-block",
-    "left-cross-block",
-    "left-jab",
-    "left-roundhouse-body",
-    "left-roundhouse-leg",
-    "left-roundhouse-head",
-    "left-teep-body",
-    "right-block",
-    "right-jab",
-    "right-cross-block",
-    "right-roundhouse-head",
-    "right-roundhouse-body",
-    "right-roundhouse-leg",
-    "right-teep-body",
-    "orthodox-stance",
-    "southpaw-stance",
-]
+from mt_trainer.quantified_pose import QuantifiedPose
 
 
 def print_debug_line(*variables):
@@ -71,7 +53,8 @@ parser.add_argument('input_file')
 parser.add_argument('-v', '--verbose',
                     choices=['true', 'false'], default='false', dest='verbose')
 parser.add_argument('-t', '--technique',
-                    type=str, default='false', dest='technique')
+                    type=str, default='false', dest='technique',
+                    choices=QuantifiedPose.TECHNIQUES)
 parser.add_argument('-o', '--output-dir',
                     type=str, default='./data/poses/training',
                     dest='output_dir')

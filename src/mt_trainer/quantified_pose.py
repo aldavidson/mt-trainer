@@ -4,6 +4,25 @@ import json
 
 class QuantifiedPose:
     mp_pose = mp.solutions.pose
+    
+    TECHNIQUES = [
+        "left-block",
+        "left-cross-block",
+        "left-jab",
+        "left-roundhouse-body",
+        "left-roundhouse-leg",
+        "left-roundhouse-head",
+        "left-teep-body",
+        "right-block",
+        "right-jab",
+        "right-cross-block",
+        "right-roundhouse-head",
+        "right-roundhouse-body",
+        "right-roundhouse-leg",
+        "right-teep-body",
+        "orthodox-stance",
+        "southpaw-stance",
+    ]
   
     ANGLE_LANDMARKS = {
         "left_ankle_extension": (mp_pose.PoseLandmark.LEFT_FOOT_INDEX.value,
@@ -144,7 +163,7 @@ class QuantifiedPose:
 
     def load_angles(self, filepath):
         self.angles = json.load(open(filepath, 'r', encoding='utf-8'))
-    
+
     def save_angles(self, filepath):
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(self.angles, f)
