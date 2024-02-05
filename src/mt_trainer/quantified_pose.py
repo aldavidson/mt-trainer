@@ -82,7 +82,7 @@ class QuantifiedPose:
                                   mp_pose.PoseLandmark.RIGHT_SHOULDER.value),
     }
 
-    def __init__(self, world_landmarks, image_landmarks, angles=None):
+    def __init__(self, world_landmarks=None, image_landmarks=None, angles=None):
         self.world_landmarks = world_landmarks
         self.image_landmarks = image_landmarks
         if angles is not None:
@@ -153,17 +153,21 @@ class QuantifiedPose:
             Value ranges from -1 (exactly opposing) to +1 (exactly
             the same)
         '''
-        vector1 = self.angles.values()
-        vector2 = other_pose.angles.values()
-        dot12 = vector_maths.dot(vector1, vector2)
-        mod1mod2 = (
-            vector_maths.vector_mod(vector1) * vector_maths.vector_mod(vector2)
-        )
-        return dot12 / mod1mod2
+        if self.angles and other_pose.angles:
+            vector1 = self.angles.values()
+            vector2 = other_pose.angles.values()
+            dot12 = vector_maths.dot(vector1, vector2)
+            mod1mod2 = (
+                vector_maths.vector_mod(vector1) * vector_maths.vector_mod(vector2)
+            )
+            return dot12 / mod1mod2
+        else:
+            return None
 
     def load_angles(self, filepath):
         self.angles = json.load(open(filepath, 'r', encoding='utf-8'))
-
+        return self.angles
+    
     def save_angles(self, filepath):
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(self.angles, f)
