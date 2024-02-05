@@ -1,5 +1,6 @@
 import mediapipe as mp
 import mt_trainer.vector_maths as vector_maths
+import pdb
 
 class QuantifiedPose:
     mp_pose = mp.solutions.pose
@@ -74,13 +75,17 @@ class QuantifiedPose:
     def calculate_angles(self):
         angles = {}
         for angle, landmark_names in self.ANGLE_LANDMARKS.items():
-            landmarks = map( 
+            landmarks = list(map( 
                 lambda l: vector_maths.landmark_to_vector(
                             self.world_landmarks.landmark[l]
                           ),
                 landmark_names
+            ))
+
+            angles[angle] = vector_maths.angle_between(
+                vector_maths.vector_between(landmarks[1], landmarks[2]),
+                vector_maths.vector_between(landmarks[1], landmarks[0]),
             )
-            angles[angle] = vector_maths.angle_between(*landmarks)
         return angles
 
     def rounded_angles(self):
@@ -114,3 +119,22 @@ class QuantifiedPose:
             diff.angles[key] -= other_pose.angles[key]
 
         return diff
+
+    def similarity_to(self, other_pose):
+        '''
+            Returns the cosine-similarity compared to the other_pose.
+            Method:
+            Treats the pose's angles as an n-dimensional vector, and
+            returns the cosine of the angle between them in that 
+            n-dimensional space. 
+            Value ranges from -1 (exactly opposing) to +1 (exactly
+            the same)
+        '''
+        vector1 = self.angles.values()
+        vector2 = other_pose.angles.values()
+        dot12 = vector_maths.dot(vector1, vector2)
+        mod1mod2 = (
+            vector_maths.vector_mod(vector1) * vector_maths.vector_mod(vector2)
+        )
+        return dot12 / mod1mod2
+    

@@ -30,23 +30,26 @@ def dot(vector1, vector2):
     return sum(map(lambda v1, v2: v1*v2, vector1, vector2))
 
 
-def angle_between(vector1, vector2, vector3):
+def angle_between(vector1, vector2):
     '''
-    This function calculates angle between three different vectors at the
-    point vector2.
+      This function calculates angle between two vectors
 
-    Args:
-        vector1: x,y and z coordinates of vector 1
-        vector2: x,y and z coordinates of vector 2.
-        vector3: x,y and z coordinates of vector 3.
-    Returns:
-        angle: The calculated angle between the three vectors.
-
+      Args:
+          vector1
+          vector2
+      Returns:
+          angle: The calculated angle between the two vectors.
     '''
-    # Calculate the angle between the three points
-    # as acos( (3-2).(1-2) / (mod(3-2) * mod(1-2)) )
-    v23 = vector_between(vector2, vector3)
-    v21 = vector_between(vector2, vector1)
-
-    radians = math.acos(dot(v23, v21) / (vector_mod(v23) * vector_mod(v21)))
+    radians = math.acos(
+        dot(vector1, vector2) /
+        (vector_mod(vector1) * vector_mod(vector2))
+    )
     return math.degrees(radians)
+
+
+def variance(vector1, vector2):
+    '''
+        Returns the "variance" between the two vectors - e.g.
+        sqrt( sum( (x2-x1)**2, (y2-y1)**2, (z2-z1)**2, ... )
+    '''
+    return math.sqrt(sum(map(lambda i1, i2: (i2-i1)**2, vector1, vector2)))
