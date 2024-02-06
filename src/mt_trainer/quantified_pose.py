@@ -13,6 +13,7 @@ class QuantifiedPose:
         "left-roundhouse-leg",
         "left-roundhouse-head",
         "left-teep-body",
+        "left-teep-head",
         "right-block",
         "right-jab",
         "right-cross-block",
@@ -20,6 +21,7 @@ class QuantifiedPose:
         "right-roundhouse-body",
         "right-roundhouse-leg",
         "right-teep-body",
+        "right-teep-head",
         "orthodox-stance",
         "southpaw-stance",
     ]
@@ -128,15 +130,17 @@ class QuantifiedPose:
         '''
         diff = QuantifiedPose(self.world_landmarks, self.image_landmarks, self.angles)
 
-        for i, landmark in enumerate(diff.world_landmarks.landmark):
-            landmark.x -= other_pose.world_landmarks.landmark[i].x
-            landmark.y -= other_pose.world_landmarks.landmark[i].z
-            landmark.z -= other_pose.world_landmarks.landmark[i].z
-
-        for i, landmark in enumerate(diff.image_landmarks.landmark):
-            landmark.x -= other_pose.image_landmarks.landmark[i].x
-            landmark.y -= other_pose.image_landmarks.landmark[i].z
-            landmark.z -= other_pose.image_landmarks.landmark[i].z
+        if other_pose.world_landmarks and diff.world_landmarks:
+            for i, landmark in enumerate(diff.world_landmarks.landmark):
+                landmark.x -= other_pose.world_landmarks.landmark[i].x
+                landmark.y -= other_pose.world_landmarks.landmark[i].z
+                landmark.z -= other_pose.world_landmarks.landmark[i].z
+        
+        if other_pose.image_landmarks and diff.image_landmarks:
+            for i, landmark in enumerate(diff.image_landmarks.landmark):
+                landmark.x -= other_pose.image_landmarks.landmark[i].x
+                landmark.y -= other_pose.image_landmarks.landmark[i].z
+                landmark.z -= other_pose.image_landmarks.landmark[i].z
 
         for key in diff.angles.keys():
             diff.angles[key] -= other_pose.angles[key]

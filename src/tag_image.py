@@ -7,6 +7,8 @@ given output folder (default: ./poses/training/)
 """
 import argparse
 import os
+import pathlib
+import pdb
 import sys
 
 import cv2
@@ -46,11 +48,11 @@ parser = argparse.ArgumentParser(
         "given output folder (default: ./poses/training/)")
     )
 
-parser.add_argument('input_file')
+parser.add_argument('input_files', type=str, nargs='+')
 parser.add_argument('-v', '--verbose',
                     choices=['true', 'false'], default='false', dest='verbose')
 parser.add_argument('-t', '--technique',
-                    type=str, default='false', dest='technique',
+                    type=str, required=True, dest='technique',
                     choices=QuantifiedPose.TECHNIQUES)
 parser.add_argument('-o', '--output-dir',
                     type=str, default='./data/poses/training',
@@ -64,28 +66,31 @@ parser.add_argument('-tc', '--min-tracking-confidence',
 
 args = parser.parse_args()
 
+
 processor = FrameProcessor(
     min_detection_confidence=args.min_detection_confidence,
     min_tracking_confidence=args.min_tracking_confidence)
 
-frame = cv2.imread(args.input_file)
-if frame is None:
-    print("Error opening image file", args.input_file)
-    raise TypeError
+for input_file in args.input_files:
+    print_debug_line('reading ', input_file)
+    frame = cv2.imread(input_file)
+    if frame is None:
+        print("Error opening image file", input_file)
+        raise TypeError
 
-print_debug_line(' quantifying pose')
-pose = processor.quantify_pose(frame)
-if pose.angles:
-    output_file = output_file_name(
-        args.input_file,
-        os.path.join(args.output_dir, args.technique)
-    )
-        
-    pose.save_angles(output_file)
+    print_debug_line(' quantifying pose')
+    pose = processor.quantify_pose(frame)
+    if pose.angles:
+        output_file = output_file_name(
+            input_file,
+            os.path.join(args.output_dir, args.technique)
+        )
+            
+        pose.save_angles(output_file)
 
-    print(' ', output_file, ' - ', os.path.getsize(output_file), ' bytes')
-else:
-    print('no pose found in image ', args.input_file)
+        print(' ', output_file, ' - ', os.path.getsize(output_file), ' bytes')
+    else:
+        print('no pose found in image ', input_file)
 
 print('All done')
 # cleanup
