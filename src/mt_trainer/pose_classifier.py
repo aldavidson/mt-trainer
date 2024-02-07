@@ -13,11 +13,17 @@ class PoseClassifier:
         if data_dir:
             self.load_training_data(data_dir)
 
-    def load_training_data(self, dir):
+    def load_training_data(self, dir_path):
+        '''
+            Load training data from the given dir_path.
+            Training data must be in the form of a
+            JSON-serialised QuantifiedPose, organised
+            into a sub-folder for each technique. 
+        '''
         for technique in QuantifiedPose.TECHNIQUES:
             archetype = QuantifiedPose({}, {}, {})
 
-            technique_dir = os.path.join(dir, technique)
+            technique_dir = os.path.join(dir_path, technique)
             files = PoseClassifier.files_in(technique_dir)
 
             files_loaded = 0
@@ -36,6 +42,9 @@ class PoseClassifier:
 
     @staticmethod
     def files_in(dir):
+        '''
+            TODO: This method doesn't belong in this class
+        '''
         return [
             os.path.join(dirpath, f)
             for (dirpath, dirnames, filenames) in os.walk(dir)
@@ -49,9 +58,17 @@ class PoseClassifier:
 
         return similarities
 
-    def classify(self, pose, threshold=0.9):
+    def classify(self, pose, threshold=0.9, max_results=1):
+        '''
+            Returns a list of most-similar poses to the given
+            QuantifiedPose, and their cosine-similarity. 
+            The list is sorted in descending order of similarity,
+            and will contain at most max_results members.
+            All members must have cosine similarity equal to or 
+            greater than the given threshold.
+        '''
         poses = self.similarities(pose)
         poses_over_threshold = list(
           (k, v) for k, v in poses.items() if v and v >= threshold
         )
-        return sorted(poses_over_threshold, key=lambda v: v[1])
+        return sorted(poses_over_threshold, key=lambda v: v[1], reverse=True)[0:max_results]
