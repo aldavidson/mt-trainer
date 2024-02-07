@@ -86,7 +86,7 @@ for input_file in args.input_files:
             os.path.join(args.output_dir, args.technique)
         )
             
-        pose.save_angles(output_file)
+        pose.save(output_file)
 
         print(' ', output_file, ' - ', os.path.getsize(output_file), ' bytes')
     else:

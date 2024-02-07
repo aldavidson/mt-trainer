@@ -15,25 +15,22 @@ class PoseClassifier:
 
     def load_training_data(self, dir):
         for technique in QuantifiedPose.TECHNIQUES:
-            archetype = QuantifiedPose(None, None, {})
-            
+            archetype = QuantifiedPose({}, {}, {})
+
             technique_dir = os.path.join(dir, technique)
             files = PoseClassifier.files_in(technique_dir)
 
             files_loaded = 0
             for file in files:
                 try:
-                    angles = QuantifiedPose().load_angles(file)
+                    pose = QuantifiedPose.load(file)
+                    archetype = archetype.plus(pose)
                     files_loaded += 1
-                    for name, value in angles.items():
-                        archetype.angles[name] = (archetype.angles.get(name) or 0.0) 
-                        archetype.angles[name] += value
                 except JSONDecodeError:
                     pass
 
             if files_loaded > 1:
-                for name, value in archetype.angles.items():
-                    archetype.angles[name] /= files_loaded
+                archetype.multiply_by(1.0 / files_loaded)
 
             self.pose_archetypes[technique] = archetype
 

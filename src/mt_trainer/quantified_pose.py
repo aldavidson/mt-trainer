@@ -1,6 +1,10 @@
 import mediapipe as mp
 import mt_trainer.vector_maths as vector_maths
 import json
+import pdb
+
+from google.protobuf.json_format import MessageToDict, ParseDict
+from mediapipe.framework.formats.landmark_pb2 import LandmarkList
 
 class QuantifiedPose:
     mp_pose = mp.solutions.pose
@@ -133,13 +137,13 @@ class QuantifiedPose:
         if other_pose.world_landmarks and diff.world_landmarks:
             for i, landmark in enumerate(diff.world_landmarks.landmark):
                 landmark.x -= other_pose.world_landmarks.landmark[i].x
-                landmark.y -= other_pose.world_landmarks.landmark[i].z
+                landmark.y -= other_pose.world_landmarks.landmark[i].y
                 landmark.z -= other_pose.world_landmarks.landmark[i].z
         
         if other_pose.image_landmarks and diff.image_landmarks:
             for i, landmark in enumerate(diff.image_landmarks.landmark):
                 landmark.x -= other_pose.image_landmarks.landmark[i].x
-                landmark.y -= other_pose.image_landmarks.landmark[i].z
+                landmark.y -= other_pose.image_landmarks.landmark[i].y
                 landmark.z -= other_pose.image_landmarks.landmark[i].z
 
         for key in diff.angles.keys():
@@ -147,6 +151,62 @@ class QuantifiedPose:
 
         return diff
 
+    def plus(self, other_pose):
+        '''
+            Add the values of angles and both types of landmarks
+            of other_pose to this pose, returning a new copy 
+        '''
+        diff = QuantifiedPose(
+            self.world_landmarks,
+            self.image_landmarks,
+            self.angles
+        )
+
+        if not diff.world_landmarks:
+            diff.world_landmarks = other_pose.world_landmarks
+        else:
+            for i, landmark in enumerate(diff.world_landmarks.landmark):
+                landmark.x += other_pose.world_landmarks.landmark[i].x
+                landmark.y += other_pose.world_landmarks.landmark[i].y
+                landmark.z += other_pose.world_landmarks.landmark[i].z
+        
+        if not diff.image_landmarks:
+            diff.image_landmarks = other_pose.image_landmarks
+        else:
+            for i, landmark in enumerate(diff.image_landmarks.landmark):
+                landmark.x += other_pose.image_landmarks.landmark[i].x
+                landmark.y += other_pose.image_landmarks.landmark[i].y
+                landmark.z += other_pose.image_landmarks.landmark[i].z
+
+        for key in other_pose.angles.keys():
+            diff.angles[key] = diff.angles.get(key, 0.0) + other_pose.angles[key]
+
+        return diff
+    
+    def multiply_by(self, scale_factor=1.0):
+        '''
+            Multiply the values of angles and both types of landmarks
+            of this pose by the given scale_factor.
+            Mostly used for averaging a set of poses in training
+        '''
+
+        if self.world_landmarks:
+            for i, landmark in enumerate(self.world_landmarks.landmark):
+                landmark.x *= scale_factor
+                landmark.y *= scale_factor
+                landmark.z *= scale_factor
+        
+        if self.image_landmarks:
+            for i, landmark in enumerate(self.image_landmarks.landmark):
+                landmark.x *= scale_factor
+                landmark.y *= scale_factor
+                landmark.z *= scale_factor
+
+        for key in self.angles.keys():
+            self.angles[key] *= scale_factor
+
+        return self
+    
     def similarity_to(self, other_pose):
         '''
             Returns the cosine-similarity compared to the other_pose.
@@ -175,3 +235,31 @@ class QuantifiedPose:
     def save_angles(self, filepath):
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(self.angles, f)
+
+    def save(self, filepath):
+        '''
+            Saves the angles and landmarks to the given filepath 
+            as JSON
+        '''
+        doc = {
+            "angles": self.angles,
+            "world_landmarks": MessageToDict(self.world_landmarks),
+            "image_landmarks": MessageToDict(self.image_landmarks),
+        }
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(doc, f)
+            
+    @staticmethod
+    def load(filepath):
+        '''
+            Return a new instance initialised with the JSON data
+            in the given filepath
+        '''
+        doc = json.load(open(filepath, 'r', encoding='utf-8'))
+        pose = QuantifiedPose(
+            ParseDict(doc.get("world_landmarks"), LandmarkList()),
+            ParseDict(doc.get("image_landmarks"), LandmarkList()),
+            doc.get("angles"),
+        )
+        return pose
+    
