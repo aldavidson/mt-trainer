@@ -53,7 +53,7 @@ parser.add_argument('-v', '--verbose',
                     choices=['true', 'false'], default='false', dest='verbose')
 parser.add_argument('-t', '--technique',
                     type=str, required=True, dest='technique',
-                    choices=QuantifiedPose.TECHNIQUES)
+                    )
 parser.add_argument('-o', '--output-dir',
                     type=str, default='./data/poses/training',
                     dest='output_dir')
@@ -76,21 +76,20 @@ for input_file in args.input_files:
     frame = cv2.imread(input_file)
     if frame is None:
         print("Error opening image file", input_file)
-        raise TypeError
-
-    print_debug_line(' quantifying pose')
-    pose = processor.quantify_pose(frame)
-    if pose.angles:
-        output_file = output_file_name(
-            input_file,
-            os.path.join(args.output_dir, args.technique)
-        )
-            
-        pose.save(output_file)
-
-        print(' ', output_file, ' - ', os.path.getsize(output_file), ' bytes')
     else:
-        print('no pose found in image ', input_file)
+        print_debug_line(' quantifying pose')
+        pose = processor.quantify_pose(frame)
+        if pose:
+            output_file = output_file_name(
+                input_file,
+                os.path.join(args.output_dir, args.technique)
+            )
+                
+            pose.save(output_file)
+
+            print(' ', output_file, ' - ', os.path.getsize(output_file), ' bytes')
+        else:
+            print('no pose found in image ', input_file)
 
 print('All done')
 # cleanup

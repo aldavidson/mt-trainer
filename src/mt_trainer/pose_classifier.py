@@ -1,5 +1,6 @@
 import os
 import pathlib
+import pdb
 
 from json.decoder import JSONDecodeError
 
@@ -11,7 +12,9 @@ class PoseClassifier:
     def __init__(self, pose_archetypes=None, data_dir=None):
         self.pose_archetypes = pose_archetypes or {}
         if data_dir:
-            self.load_training_data(data_dir)
+            self.data_dir = data_dir
+            self.technique_names = sorted([d.name for d in os.scandir(data_dir)])
+            self.load_training_data(self.data_dir)
 
     def load_training_data(self, dir_path):
         '''
@@ -20,7 +23,7 @@ class PoseClassifier:
             JSON-serialised QuantifiedPose, organised
             into a sub-folder for each technique. 
         '''
-        for technique in QuantifiedPose.TECHNIQUES:
+        for technique in self.technique_names:
             archetype = QuantifiedPose({}, {}, {})
 
             technique_dir = os.path.join(dir_path, technique)

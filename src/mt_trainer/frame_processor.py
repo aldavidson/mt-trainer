@@ -31,9 +31,12 @@ class FrameProcessor:
           rgb_image (if any)
         '''
         results = self.pose_landmarker.process(rgb_image)
-        quant_pose = QuantifiedPose(results.pose_world_landmarks,
-                                    results.pose_landmarks)
-        return quant_pose
+        if results.pose_world_landmarks:
+            quant_pose = QuantifiedPose(results.pose_world_landmarks,
+                                        results.pose_landmarks)
+            return quant_pose
+        else:
+            return None
 
     def draw_landmarks(self, landmarks, rgb_image):
         '''

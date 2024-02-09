@@ -18,5 +18,6 @@ for directory in `find $INPUT_DIR -maxdepth 1 -mindepth 1 -type d `
 do
     echo "directory: $directory"
     technique=$(basename $directory)
+    mkdir -p $OUTPUT_DIR/$technique
     ./tag_image.py -o $OUTPUT_DIR -t $technique $directory/*
 done

@@ -54,7 +54,7 @@ parser.add_argument('-v', '--verbose',
                     choices=['true', 'false'], default='false', dest='verbose')
 parser.add_argument('-t', '--technique',
                     type=str, default='false', dest='technique',
-                    choices=QuantifiedPose.TECHNIQUES)
+                    )
 parser.add_argument('-o', '--output-dir',
                     type=str, default='./data/poses/training',
                     dest='output_dir')

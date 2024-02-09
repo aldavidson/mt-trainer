@@ -96,6 +96,20 @@ parser.add_argument('-td', '--training-data',
                     dest='training_data_dir',
                     type=str, default='../data/poses/training/')
 
+parser.add_argument('-cct', '--classification-confidence-threshold',
+                    dest='classification_confidence_threshold',
+                    type=float, default=0.98,
+                    help=("Minimum confidence threshold for pose "
+                          "classifications, on a scale from 0.0 to 1.0"
+                          "0.98 is a good place to start."))
+parser.add_argument('-ffc', '--frames-for-classification',
+                    dest='frames_for_classification',
+                    type=int, default=3,
+                    help=("Minimum number of successive frames for which a" 
+                          "pose classification must persist in order to be"
+                          "outputted. Larger values help make the pose"
+                          "classification less noisy"))
+
 args = parser.parse_args()
 input_file = args.input_file
 output_file = args.output_file or default_output_file_path(input_file)
@@ -154,6 +168,8 @@ print_debug_line('\n\n')
 
 output_frame_number = 1
 whole_process_start = time()
+last_classification = None
+frames_with_this_classification = 0
 
 while (cap.isOpened() and 
        (cap.get(cv2.CAP_PROP_POS_FRAMES) <= (args.from_frame + max_frames))):
@@ -186,7 +202,7 @@ while (cap.isOpened() and
     panel = processor.make_panel_for_angles(FONT_SIZE)
 
     # if we didn't detect a pose, say so and skip
-    if not pose.world_landmarks:
+    if not pose:
         # we'll just output the input image
         output_image = input_image
 
@@ -215,25 +231,40 @@ while (cap.isOpened() and
         # render the pose classification
         classification = classifier.classify(
             pose,
-            threshold=0.98,
+            threshold=args.classification_confidence_threshold,
             max_results=1
         )
         # we get an array back, it might be empty
+        # But if it isn't ....
         if classification:
-            print(classification[0])
+            print_debug_line(classification[0])
             confidence = classification[0][1]
             classification = classification[0][0]
+            if classification == last_classification:
+                frames_with_this_classification += 1
+            else:
+                frames_with_this_classification = 1
+                
+            # only output the classification if it's been constant for
+            # at least the required number of frames
+            if frames_with_this_classification >= args.frames_for_classification:    
+                top = panel.shape[0] - (FONT_SIZE + 2)
+                confidence_pct = str(round(100.0 * confidence, 2))
+                prediction = f"Pose: {classification} ({confidence_pct}%)"
+                text_renderer.render(
+                    prediction,
+                    panel,
+                    top=top, left=2,
+                    pixel_height=FONT_SIZE,
+                    color=(255, 255, 255))
             
-            top = panel.shape[0] - (FONT_SIZE + 2)
-            confidence_pct = str(round(100.0 * confidence, 2))
-            prediction = f"Pose: {classification} ({confidence_pct}%)"
-            text_renderer.render(
-                prediction,
-                panel,
-                top=top, left=2,
-                pixel_height=FONT_SIZE,
-                color=(255, 255, 255))
-
+            last_classification = classification
+        else:
+            print_debug_line(
+                "doesn't match any known pose by at least",
+                f"{round(args.classification_confidence_threshold, 2)}%"
+            )
+            
     # resize the frame if needed
     if output_width != frame_width or output_height != frame_height:
         # Resize the frame
