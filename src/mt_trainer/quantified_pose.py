@@ -9,8 +9,6 @@ from mediapipe.framework.formats.landmark_pb2 import LandmarkList
 class QuantifiedPose:
     mp_pose = mp.solutions.pose
     
-    
-  
     ANGLE_LANDMARKS = {
         "left_ankle_extension": (mp_pose.PoseLandmark.LEFT_FOOT_INDEX.value,
                                  mp_pose.PoseLandmark.LEFT_ANKLE.value,
@@ -244,3 +242,10 @@ class QuantifiedPose:
         )
         return pose
     
+    def plot_3d(self):
+        '''
+            Render world landmarks in 3d using matplotlib
+        '''
+        mp_pose = mp.solutions.pose
+        mp_drawing = mp.solutions.drawing_utils
+        mp_drawing.plot_landmarks(self.world_landmarks, mp_pose.POSE_CONNECTIONS)
