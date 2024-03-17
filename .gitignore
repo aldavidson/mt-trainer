@@ -2,5 +2,9 @@
 /output/*
 .vscode
 
+data/images
+data/videos
+data/3rd-party
+
 /src/__pycache__/
 src/mt_trainer/__pycache__/

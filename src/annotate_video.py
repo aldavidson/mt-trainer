@@ -157,7 +157,7 @@ if not out.isOpened():
     cap.release()
     sys.exit()
 
-print_debug_line('writing', max_frames, 
+print('writing', max_frames, 
                  'frames of annotated video to', output_file,
                  'at', output_fps, 'fps,', output_width,
                  'x', output_height,
