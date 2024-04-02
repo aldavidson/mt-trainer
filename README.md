@@ -3,5 +3,5 @@ An experiment to refresh my AI skills by applying it to another of my interests 
 
 
 # Tests
-From the root directory of this repo, run:
+From the src/ directory of this repo, run:
 `python -m pytest tests`

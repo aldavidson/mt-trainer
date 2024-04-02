@@ -1,5 +1,5 @@
 import mediapipe as mp
-import mt_trainer.vector_maths as vector_maths
+from . import vector_maths
 import json
 import pdb
 

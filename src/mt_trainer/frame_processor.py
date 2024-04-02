@@ -53,8 +53,6 @@ class FrameProcessor:
 
         return rgb_image_copy
 
-    def dump_angles(self, font_size=12):
-        ''' Make a new image with the given bg_color '''
 
     def render_angles(self,
                       quantified_pose,

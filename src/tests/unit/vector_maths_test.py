@@ -1,6 +1,6 @@
 import pytest
 
-from src.mt_trainer.vector_maths import *
+from mt_trainer.vector_maths import *
 
 class MockLandmark:
   ''' We don't need to import the actual MediaPipe Landmark class,
