@@ -1,9 +1,7 @@
 import cv2
 import mediapipe as mp
-import numpy as np
 import pdb
-from PIL import Image, ImageDraw, ImageFont
-
+import numpy as np
 
 from mt_trainer.quantified_pose import QuantifiedPose
 from mt_trainer.text_rendering import Cv2TextRenderer
@@ -126,7 +124,7 @@ class FrameProcessor:
 
         return image
 
-    def append_image(self, image1, image2, padding=2):
+    def append_image_to_rhs(self, image1, image2, padding=2):
         '''
           Append image2 to the top-right of image1.
           Leave (padding) pixels of space between them.
@@ -146,5 +144,29 @@ class FrameProcessor:
         combined_image[0:image1_height, 0:image1_width] = image1
         combined_image[0:image2_height, image1_width +
                        padding:combined_width] = image2
+
+        return combined_image
+
+    def append_image_to_bottom_left(self, image1, image2, padding=2):
+        '''
+          Append image2 to the bottom left of image1.
+          Leave (padding) pixels of space between them.
+          Fill any blank space with zeros (black)
+        '''
+        image1_height, image1_width = (image1.shape[0], image1.shape[1])
+        image2_height, image2_width = (image2.shape[0], image2.shape[1])
+        combined_height = image1_height + image2_height + padding
+        width = max(image1_width, image2_width)
+
+        combined_image = np.zeros(
+            (combined_height, width, 3),
+            np.uint8
+        )
+
+        # copy the two images in
+        image2_start_height = image1_height + padding
+        combined_image[0:image1_height, 0:image1_width] = image1
+        combined_image[(image2_start_height):combined_height,
+                       0:image2_width] = image2
 
         return combined_image

@@ -13,6 +13,8 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import os
+import time
+from PIL import Image
 
 from mt_trainer.frame_processor import FrameProcessor
 
@@ -78,17 +80,24 @@ rgb_image_with_landmarks = processor.draw_landmarks(pose.image_landmarks,
 rgb_panel = processor.render_angles(pose)
 
 # Combine the two images into one
-combined_image = processor.append_image(rgb_image_with_landmarks, rgb_panel)
+combined_image = processor.append_image_to_rhs(rgb_image_with_landmarks,
+                                               rgb_panel)
 
+# plot the pose as a connected skeleton in matlib3d if required
+if args.plot_3d == 'true':
+    height, width = (rgb_image_with_landmarks.shape[0],
+                     combined_image.shape[1])
+    
+    mp_pose = mp.solutions.pose
+    image_3d = processor.plot_3d_landmarks(pose.world_landmarks, 
+                                           mp_pose.POSE_CONNECTIONS,
+                                           width=width,
+                                           height=height)
+    combined_image = processor.append_image_to_bottom_left(combined_image,
+                                                           image_3d)
+    
 print('writing annotated image to ', args.output_file)
 cv2.imwrite(
     args.output_file,
     combined_image
 )
-
-# plot the pose as a connected skeleton in matlib3d
-if args.plot_3d == 'true':
-    mp_pose = mp.solutions.pose
-    mp_drawing = mp.solutions.drawing_utils
-    mp_drawing_styles = mp.solutions.drawing_styles
-    mp_drawing.plot_landmarks(pose.world_landmarks, mp_pose.POSE_CONNECTIONS)

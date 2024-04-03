@@ -21,7 +21,7 @@ import mediapipe as mp
 from mt_trainer.frame_processor import FrameProcessor
 from mt_trainer.text_rendering import Cv2TextRenderer
 from mt_trainer.pose_classifier import PoseClassifier
-
+from mt_trainer.graph_plotter import GraphPlotter
 
 def default_output_file_path(path):
     """Append -output before the file extension in the given file path"""
@@ -86,6 +86,8 @@ parser.add_argument("-s", "--scale", dest='output_scale',
                     help=("Scale output by this many percent. Default is 100. "
                           "Has no effect if the above width & height values"
                           "are set."))
+parser.add_argument('--plot-3d', '-3d',
+                    dest='plot_3d', default='false', choices=['false', 'true'])
 parser.add_argument('-dc', '--min-detection-confidence',
                     dest='min_detection_confidence',
                     type=float, default=0.5)
@@ -156,6 +158,13 @@ if not out.isOpened():
     print("Error: Could not create the output video file.")
     cap.release()
     sys.exit()
+    
+# Create the graph here as it's an expensive operation
+plotter = None
+if args.plot_3d == 'true':
+    plotter = GraphPlotter()
+    plotter.create_figure(width=output_width, height=output_height)
+    plotter.create_axes()
 
 print_debug_line('writing', max_frames, 
                  'frames of annotated video to', output_file,
@@ -273,7 +282,26 @@ while (cap.isOpened() and
             output_image, dim, interpolation=cv2.INTER_AREA)
 
     # combine the landmarked image and annotation panel into one
-    output_image_with_panel = processor.append_image(output_image, panel)
+    output_image_with_panel = processor.append_image_to_rhs(output_image, panel)
+    
+    # plot the pose as a connected skeleton in matlib3d if required
+    if args.plot_3d == 'true':
+        height, width = (output_image.shape[0],
+                         output_image_with_panel.shape[1])
+        
+        start = time()
+        plotter.plot_3d_landmarks(pose.world_landmarks)
+        print_debug_line(' Plotted 3d landmarks in ', str(round(time() - start, 4)) + 's')
+        
+        start = time()
+        image_3d = plotter.grab_image() 
+        print_debug_line(' Grabbed image in ', str(round(time() - start, 4)) + 's')
+        
+        start = time()
+        output_image_with_panel = processor.append_image_to_bottom_left(
+            output_image_with_panel,
+            image_3d)
+        print_debug_line(' appended image in ', str(round(time() - start, 4)) + 's')
 
     # write the frame out
     out.write(cv2.cvtColor(output_image_with_panel, cv2.COLOR_RGB2BGR))
@@ -292,6 +320,8 @@ print_debug_line('\nProcessed', output_frame_number,
                  '=>', round(output_frame_number / whole_process_time, 2), 'fps')
 # cleanup
 processor.pose_landmarker.close()
+if plotter:
+    plotter.cleanup()
 cap.release()
 out.release()
 
