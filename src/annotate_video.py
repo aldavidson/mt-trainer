@@ -17,11 +17,13 @@ from time import time
 
 import cv2
 import mediapipe as mp
+import numpy as np
 
 from mt_trainer.frame_processor import FrameProcessor
 from mt_trainer.text_rendering import Cv2TextRenderer
 from mt_trainer.pose_classifier import PoseClassifier
 from mt_trainer.graph_plotter import GraphPlotter
+from mt_trainer.layout import Layout
 
 def default_output_file_path(path):
     """Append -output before the file extension in the given file path"""
@@ -128,8 +130,8 @@ frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 max_frames = args.max_frames or (int(cap.get(cv2.CAP_PROP_FRAME_COUNT) - args.from_frame))
 output_fps = args.fps or int(cap.get(cv2.CAP_PROP_FPS))
-output_width = args.output_width or int(frame_width * 0.01 * args.output_scale)
-output_height = args.output_height or int(
+output_frame_width = args.output_width or int(frame_width * 0.01 * args.output_scale)
+output_frame_height = args.output_height or int(
     frame_height * 0.01 * args.output_scale)
 
 processor = FrameProcessor(
@@ -139,12 +141,36 @@ processor = FrameProcessor(
 text_renderer = Cv2TextRenderer()
 
 # need to do this now, so that we can work out the output width for the video
+# 
+# layout:
+#
+# ---------------------------------------------
+# | original video, scaled | body angles & prediction |
+# height is adjusted to the tallest of the above
+# width also includes a few pixels padding between the two panels
+# 
+# if told to plot3d, we append another row on the bottom:
+# | 3d landmarks           | (empty space)            |
+# -----------------------------------------------------
 FONT_SIZE = 12
 annotation_panel = processor.make_panel_for_angles(font_size=FONT_SIZE)
 PADDING = 2
-panel_width = annotation_panel.shape[1]
-height_with_annotation = max(output_height, annotation_panel.shape[0])
-annotated_video_width = output_width + panel_width + PADDING
+# panel_width = annotation_panel.shape[1]
+# height_with_annotation = max(output_frame_height, annotation_panel.shape[0])
+# annotated_video_width = output_frame_width + panel_width + PADDING
+
+if args.plot_3d == 'true':
+    panel_3d_size = [output_frame_width, output_frame_height]
+else:
+    panel_3d_size = None
+
+
+layout = Layout(
+    [output_frame_width, output_frame_height],
+    [annotation_panel.shape[1], annotation_panel.shape[0]],
+    panel_3d_size,
+    PADDING,
+)
 
 output_codec = args.codec or decode_fourcc(cap.get(cv2.CAP_PROP_FOURCC))
 
@@ -152,7 +178,7 @@ output_codec = args.codec or decode_fourcc(cap.get(cv2.CAP_PROP_FOURCC))
 out = cv2.VideoWriter(output_file,
                       cv2.VideoWriter_fourcc(*output_codec),
                       output_fps,
-                      (annotated_video_width, height_with_annotation))
+                      (layout.total_width, layout.total_height))
 
 if not out.isOpened():
     print("Error: Could not create the output video file.")
@@ -163,20 +189,17 @@ if not out.isOpened():
 plotter = None
 if args.plot_3d == 'true':
     plotter = GraphPlotter()
-    plotter.create_figure(width=output_width, height=output_height)
-    plotter.create_axes()
 
 print_debug_line('writing', max_frames, 
                  'frames of annotated video to', output_file,
-                 'at', output_fps, 'fps,', output_width,
-                 'x', output_height,
+                 'at', output_fps, 'fps,', 
+                 layout.video_size[0], 'x', layout.video_size[1],
                  'with codec', output_codec,
-                 ' shape with panel =',
-                 (annotated_video_width, output_height))
+                 ' total size =',
+                 layout.total_width, 'x', layout.total_height)
 print_debug_line('\n\n')
 
 output_frame_number = 1
-whole_process_start = time()
 last_classification = None
 frames_with_this_classification = 0
 
@@ -197,6 +220,9 @@ while (cap.isOpened() and
         print_debug_line('Skipping frame ',  int(frame_number))
         sys.stdout.write('\r')
         sys.stdout.flush()
+        # ignore skip time in calculations of FPS
+        start = time()
+        whole_process_start = time()
         continue
 
     print_debug_line('Frame ', frame_number,
@@ -275,9 +301,9 @@ while (cap.isOpened() and
             )
             
     # resize the frame if needed
-    if output_width != frame_width or output_height != frame_height:
+    if output_frame_width != frame_width or output_frame_height != frame_height:
         # Resize the frame
-        dim = (output_width, output_height)
+        dim = (output_frame_width, output_frame_height)
         output_image = cv2.resize(
             output_image, dim, interpolation=cv2.INTER_AREA)
 
@@ -286,16 +312,17 @@ while (cap.isOpened() and
     
     # plot the pose as a connected skeleton in matlib3d if required
     if args.plot_3d == 'true':
-        height, width = (output_image.shape[0],
-                         output_image_with_panel.shape[1])
+        image_3d = np.zeros((layout.video_size[1],
+                             layout.video_size[0],
+                             3),
+                            np.uint8
+                            )
+        image_3d.fill(255)
         
         start = time()
-        plotter.plot_3d_landmarks(pose.world_landmarks)
+        plotter.plot_3d_landmarks_on_image(landmark_list=pose.world_landmarks,
+                                           image=image_3d)
         print_debug_line(' Plotted 3d landmarks in ', str(round(time() - start, 4)) + 's')
-        
-        start = time()
-        image_3d = plotter.grab_image() 
-        print_debug_line(' Grabbed image in ', str(round(time() - start, 4)) + 's')
         
         start = time()
         output_image_with_panel = processor.append_image_to_bottom_left(
