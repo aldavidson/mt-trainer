@@ -8,13 +8,13 @@ class Camera:
                  image_width: int = 640,
                  image_height: int = 480,
                  position: np.ndarray = np.array([0,0,2], dtype=np.float32),
-                 orientation: np.ndarray = np.array([0,0,0], dtype=np.float32),
+                 rotation_vector: np.ndarray = np.array([0,0,0], dtype=np.float32),
                  ):
         self.focal_length = focal_length
         self.image_width = image_width
         self.image_height = image_height
         self.position = position
-        self.orientation = orientation
+        self.rotation_vector = rotation_vector
 
     def intrinsic_matrix(self):
         intrinsic_matrix = np.array([ 
@@ -26,7 +26,7 @@ class Camera:
     
     def project_3d_point(self, point):
         projected_point = cv2.projectPoints(point, 
-                                   self.orientation, self.position.reshape(-1, 1),
+                                   self.rotation_vector, self.position.reshape(-1, 1),
                                    self.intrinsic_matrix(), 
                                    None)
       

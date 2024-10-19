@@ -30,9 +30,11 @@ class GraphPlotter:
                                    image: np.ndarray,
                                    landmark_list: NormalizedLandmarkList,
                                    connections: Optional[List[Tuple[int, int]]] = mp.solutions.pose.POSE_CONNECTIONS,
+                                   camera: Camera = None,
                                   ):
 
-        camera = Camera( image_width=image.shape[1], image_height=image.shape[0] )
+        camera = camera or Camera(image_width=image.shape[1],
+                                  image_height=image.shape[0])
         points_2d = {}
         # skip landmarks that either aren't present, or aren't visible
         for idx, landmark in enumerate(landmark_list.landmark):
@@ -48,7 +50,7 @@ class GraphPlotter:
             point_2d = camera.project_3d_point(vector_maths.landmark_to_vector(landmark))
             points_2d[idx] = point_2d
 
-            image = cv2.circle(image, point_2d, 2, (0, 0, 0), -1)
+            image = cv2.circle(image, point_2d, 4, (0, 0, 0), -1)
         
         if connections:
             num_landmarks = len(landmark_list.landmark)

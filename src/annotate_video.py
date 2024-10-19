@@ -11,6 +11,7 @@ given codec
 # mediapipe - google's toolkit for applying AI to media
 from __future__ import annotations
 import argparse
+import math
 import os
 import sys
 from time import time
@@ -24,6 +25,8 @@ from mt_trainer.text_rendering import Cv2TextRenderer
 from mt_trainer.pose_classifier import PoseClassifier
 from mt_trainer.graph_plotter import GraphPlotter
 from mt_trainer.layout import Layout
+from mt_trainer.camera import Camera
+from mt_trainer import vector_maths
 
 def default_output_file_path(path):
     """Append -output before the file extension in the given file path"""
@@ -189,6 +192,12 @@ if not out.isOpened():
 plotter = None
 if args.plot_3d == 'true':
     plotter = GraphPlotter()
+    camera = Camera(image_width=panel_3d_size[0],
+                    image_height=panel_3d_size[1],
+                    )
+    # rotate the camera at PI/4 radians/sec (=> 8s per full circle)
+    # angular_speed = 0.25 * math.pi
+    angular_speed = 0.0
 
 print_debug_line('writing', max_frames, 
                  'frames of annotated video to', output_file,
@@ -202,6 +211,7 @@ print_debug_line('\n\n')
 output_frame_number = 1
 last_classification = None
 frames_with_this_classification = 0
+last_3d_render_time = None
 
 while (cap.isOpened() and 
        (cap.get(cv2.CAP_PROP_POS_FRAMES) <= (args.from_frame + max_frames))):
@@ -227,7 +237,7 @@ while (cap.isOpened() and
 
     print_debug_line('Frame ', frame_number,
                      ' of ', cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
+    
     # process the frame
     input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
     input_image.flags.writeable = True
@@ -317,12 +327,24 @@ while (cap.isOpened() and
                              3),
                             np.uint8
                             )
+        # white background
         image_3d.fill(255)
         
         start = time()
+        # rotate the camera around the y axis
+        if False and last_3d_render_time:
+            rotation_angle = (angular_speed * (time() - last_3d_render_time))
+            camera.rotation_vector[2] = 2
+            camera.rotation_vector[1] = camera.rotation_vector[1] + rotation_angle
+            print_debug_line( 'rotation_angle is ', rotation_angle )
+            print_debug_line( 'Camera position is ', camera.position )
+            
         plotter.plot_3d_landmarks_on_image(landmark_list=pose.world_landmarks,
-                                           image=image_3d)
+                                           image=image_3d,
+                                           camera=camera)
         print_debug_line(' Plotted 3d landmarks in ', str(round(time() - start, 4)) + 's')
+        
+        last_3d_render_time = time()
         
         start = time()
         output_image_with_panel = processor.append_image_to_bottom_left(
