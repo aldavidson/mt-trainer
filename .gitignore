@@ -2,5 +2,4 @@
 /output/*
 .vscode
 
-/src/__pycache__/
-src/mt_trainer/__pycache__/
+__pycache__

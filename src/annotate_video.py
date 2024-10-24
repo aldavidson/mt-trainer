@@ -11,17 +11,22 @@ given codec
 # mediapipe - google's toolkit for applying AI to media
 from __future__ import annotations
 import argparse
+import math
 import os
 import sys
 from time import time
 
 import cv2
 import mediapipe as mp
+import numpy as np
 
 from mt_trainer.frame_processor import FrameProcessor
 from mt_trainer.text_rendering import Cv2TextRenderer
 from mt_trainer.pose_classifier import PoseClassifier
-
+from mt_trainer.graph_plotter import GraphPlotter
+from mt_trainer.layout import Layout
+from mt_trainer.camera import Camera
+from mt_trainer import vector_maths
 
 def default_output_file_path(path):
     """Append -output before the file extension in the given file path"""
@@ -86,6 +91,8 @@ parser.add_argument("-s", "--scale", dest='output_scale',
                     help=("Scale output by this many percent. Default is 100. "
                           "Has no effect if the above width & height values"
                           "are set."))
+parser.add_argument('--plot-3d', '-3d',
+                    dest='plot_3d', default='false', choices=['false', 'true'])
 parser.add_argument('-dc', '--min-detection-confidence',
                     dest='min_detection_confidence',
                     type=float, default=0.5)
@@ -126,8 +133,8 @@ frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 max_frames = args.max_frames or (int(cap.get(cv2.CAP_PROP_FRAME_COUNT) - args.from_frame))
 output_fps = args.fps or int(cap.get(cv2.CAP_PROP_FPS))
-output_width = args.output_width or int(frame_width * 0.01 * args.output_scale)
-output_height = args.output_height or int(
+output_frame_width = args.output_width or int(frame_width * 0.01 * args.output_scale)
+output_frame_height = args.output_height or int(
     frame_height * 0.01 * args.output_scale)
 
 processor = FrameProcessor(
@@ -137,12 +144,36 @@ processor = FrameProcessor(
 text_renderer = Cv2TextRenderer()
 
 # need to do this now, so that we can work out the output width for the video
+# 
+# layout:
+#
+# ---------------------------------------------
+# | original video, scaled | body angles & prediction |
+# height is adjusted to the tallest of the above
+# width also includes a few pixels padding between the two panels
+# 
+# if told to plot3d, we append another row on the bottom:
+# | 3d landmarks           | (empty space)            |
+# -----------------------------------------------------
 FONT_SIZE = 12
 annotation_panel = processor.make_panel_for_angles(font_size=FONT_SIZE)
 PADDING = 2
-panel_width = annotation_panel.shape[1]
-height_with_annotation = max(output_height, annotation_panel.shape[0])
-annotated_video_width = output_width + panel_width + PADDING
+# panel_width = annotation_panel.shape[1]
+# height_with_annotation = max(output_frame_height, annotation_panel.shape[0])
+# annotated_video_width = output_frame_width + panel_width + PADDING
+
+if args.plot_3d == 'true':
+    panel_3d_size = [output_frame_width, output_frame_height]
+else:
+    panel_3d_size = None
+
+
+layout = Layout(
+    [output_frame_width, output_frame_height],
+    [annotation_panel.shape[1], annotation_panel.shape[0]],
+    panel_3d_size,
+    PADDING,
+)
 
 output_codec = args.codec or decode_fourcc(cap.get(cv2.CAP_PROP_FOURCC))
 
@@ -150,26 +181,37 @@ output_codec = args.codec or decode_fourcc(cap.get(cv2.CAP_PROP_FOURCC))
 out = cv2.VideoWriter(output_file,
                       cv2.VideoWriter_fourcc(*output_codec),
                       output_fps,
-                      (annotated_video_width, height_with_annotation))
+                      (layout.total_width, layout.total_height))
 
 if not out.isOpened():
     print("Error: Could not create the output video file.")
     cap.release()
     sys.exit()
+    
+# Create the graph here as it's an expensive operation
+plotter = None
+if args.plot_3d == 'true':
+    plotter = GraphPlotter()
+    camera = Camera(image_width=panel_3d_size[0],
+                    image_height=panel_3d_size[1],
+                    )
+    # rotate the camera at PI/4 radians/sec (=> 8s per full circle)
+    # angular_speed = 0.25 * math.pi
+    angular_speed = 0.0
 
 print_debug_line('writing', max_frames, 
                  'frames of annotated video to', output_file,
-                 'at', output_fps, 'fps,', output_width,
-                 'x', output_height,
+                 'at', output_fps, 'fps,', 
+                 layout.video_size[0], 'x', layout.video_size[1],
                  'with codec', output_codec,
-                 ' shape with panel =',
-                 (annotated_video_width, output_height))
+                 ' total size =',
+                 layout.total_width, 'x', layout.total_height)
 print_debug_line('\n\n')
 
 output_frame_number = 1
-whole_process_start = time()
 last_classification = None
 frames_with_this_classification = 0
+last_3d_render_time = None
 
 while (cap.isOpened() and 
        (cap.get(cv2.CAP_PROP_POS_FRAMES) <= (args.from_frame + max_frames))):
@@ -188,11 +230,14 @@ while (cap.isOpened() and
         print_debug_line('Skipping frame ',  int(frame_number))
         sys.stdout.write('\r')
         sys.stdout.flush()
+        # ignore skip time in calculations of FPS
+        start = time()
+        whole_process_start = time()
         continue
 
     print_debug_line('Frame ', frame_number,
                      ' of ', cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
+    
     # process the frame
     input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
     input_image.flags.writeable = True
@@ -266,14 +311,46 @@ while (cap.isOpened() and
             )
             
     # resize the frame if needed
-    if output_width != frame_width or output_height != frame_height:
+    if output_frame_width != frame_width or output_frame_height != frame_height:
         # Resize the frame
-        dim = (output_width, output_height)
+        dim = (output_frame_width, output_frame_height)
         output_image = cv2.resize(
             output_image, dim, interpolation=cv2.INTER_AREA)
 
     # combine the landmarked image and annotation panel into one
-    output_image_with_panel = processor.append_image(output_image, panel)
+    output_image_with_panel = processor.append_image_to_rhs(output_image, panel)
+    
+    # plot the pose as a connected skeleton in matlib3d if required
+    if args.plot_3d == 'true':
+        image_3d = np.zeros((layout.video_size[1],
+                             layout.video_size[0],
+                             3),
+                            np.uint8
+                            )
+        # white background
+        image_3d.fill(255)
+        
+        start = time()
+        # rotate the camera around the y axis
+        if False and last_3d_render_time:
+            rotation_angle = (angular_speed * (time() - last_3d_render_time))
+            camera.rotation_vector[2] = 2
+            camera.rotation_vector[1] = camera.rotation_vector[1] + rotation_angle
+            print_debug_line( 'rotation_angle is ', rotation_angle )
+            print_debug_line( 'Camera position is ', camera.position )
+            
+        plotter.plot_3d_landmarks_on_image(landmark_list=pose.world_landmarks,
+                                           image=image_3d,
+                                           camera=camera)
+        print_debug_line(' Plotted 3d landmarks in ', str(round(time() - start, 4)) + 's')
+        
+        last_3d_render_time = time()
+        
+        start = time()
+        output_image_with_panel = processor.append_image_to_bottom_left(
+            output_image_with_panel,
+            image_3d)
+        print_debug_line(' appended image in ', str(round(time() - start, 4)) + 's')
 
     # write the frame out
     out.write(cv2.cvtColor(output_image_with_panel, cv2.COLOR_RGB2BGR))
@@ -292,6 +369,8 @@ print_debug_line('\nProcessed', output_frame_number,
                  '=>', round(output_frame_number / whole_process_time, 2), 'fps')
 # cleanup
 processor.pose_landmarker.close()
+if plotter:
+    plotter.cleanup()
 cap.release()
 out.release()
 

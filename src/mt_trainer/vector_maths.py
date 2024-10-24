@@ -15,7 +15,7 @@ def vector_between(vector1, vector2):
       returns the vector from
       vector1 to vector2
     '''
-    return list(map(lambda v1, v2: v2-v1, vector1, vector2))
+    return tuple(map(lambda v1, v2: v2-v1, vector1, vector2))
 
 
 def vector_mod(vector):

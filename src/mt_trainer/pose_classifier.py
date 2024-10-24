@@ -1,14 +1,20 @@
 import os
-import pathlib
 import pdb
 
 from json.decoder import JSONDecodeError
 
 from mt_trainer.quantified_pose import QuantifiedPose
-
+from mt_trainer.file_system import FileSystem
 
 class PoseClassifier:
-  
+    '''
+        This is a v. basic method - 
+        load_training_data averages-out
+        all the poses for a given technique into an 
+        'archetype'
+        classify then compares the given candidate pose
+        to all the known archetypes using cosine_similarity 
+    '''
     def __init__(self, pose_archetypes=None, data_dir=None):
         self.pose_archetypes = pose_archetypes or {}
         if data_dir:
@@ -27,7 +33,7 @@ class PoseClassifier:
             archetype = QuantifiedPose({}, {}, {})
 
             technique_dir = os.path.join(dir_path, technique)
-            files = PoseClassifier.files_in(technique_dir)
+            files = FileSystem.files_in(technique_dir)
 
             files_loaded = 0
             for file in files:
@@ -42,17 +48,6 @@ class PoseClassifier:
                 archetype.multiply_by(1.0 / files_loaded)
 
             self.pose_archetypes[technique] = archetype
-
-    @staticmethod
-    def files_in(dir):
-        '''
-            TODO: This method doesn't belong in this class
-        '''
-        return [
-            os.path.join(dirpath, f)
-            for (dirpath, dirnames, filenames) in os.walk(dir)
-            for f in filenames
-        ]
 
     def similarities(self, pose):
         similarities = {}
