@@ -1,0 +1,107 @@
+<html>
+  <head>
+    <title>OpenCV.js Video Capture demo</title>
+  </head>
+  <body>
+    <p id="status">OpenCV.js is loading...</p>
+    <p class="err" id="errorMessage"></p>
+    <button id="startAndStop">Start</button>
+    <video id="videoInput" width="320" height="240"></video>
+    <canvas id="canvasOutput" width="320" height="240"></canvas>
+    <script src="https://webrtc.github.io/adapter/adapter-5.0.4.js" type="text/javascript"></script>
+    <script src="../assets/js/utils.js" type="text/javascript"></script>
+    <script type="text/javascript">
+      document.cv_ready = false;
+      let video, src, dst, cap = null;
+      const FPS = 30;
+
+      var Module = {
+        // https://emscripten.org/docs/api_reference/module.html#Module.onRuntimeInitialized
+        onRuntimeInitialized() {
+          document.getElementById('status').innerHTML = 'OpenCV.js is ready.';
+          document.cv_ready = true;
+          init();
+        }
+      };
+
+
+      function init() {
+        video = document.getElementById('videoInput');
+        cap = new cv.VideoCapture(video);
+      }
+      
+      function processVideo() {
+          try {
+              if (!streaming) {
+                  return;
+              }
+              let begin = Date.now();
+              // start processing.
+              cap.read(src);
+              cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
+              cv.imshow('canvasOutput', dst);
+              // schedule the next one.
+              let delay = 1000/FPS - (Date.now() - begin);
+              setTimeout(processVideo, delay);
+          } catch (err) {
+              utils.printError(err);
+          }
+      };
+
+    </script>
+    <script type="text/javascript">
+      let utils = new Utils('errorMessage');
+
+      let streaming = false;
+      let videoInput = document.getElementById('videoInput');
+      let startAndStop = document.getElementById('startAndStop');
+      let canvasOutput = document.getElementById('canvasOutput');
+      let canvasContext = canvasOutput.getContext('2d');
+
+      startAndStop.addEventListener('click', () => {
+          console.log('click!')
+          if (!streaming) {
+              utils.clearError();
+              utils.startCamera('qvga', onVideoStarted, 'videoInput');
+          } else {
+              utils.stopCamera();
+              onVideoStopped();
+          }
+      });
+
+      function onVideoStarted() {
+          streaming = true;
+          startAndStop.innerText = 'Stop';
+          videoInput.width = videoInput.videoWidth;
+          videoInput.height = videoInput.videoHeight;
+          //utils.executeCode('codeEditor');
+
+
+          src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
+          dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
+          // schedule the first one.
+          setTimeout(processVideo, 0);
+      }
+
+      function onVideoStopped() {
+          streaming = false;
+          canvasContext.clearRect(0, 0, canvasOutput.width, canvasOutput.height);
+          startAndStop.innerText = 'Start';
+
+          // clean and stop.
+          src.delete();
+          dst.delete();
+      }
+
+//      utils.loadOpenCv(() => {
+//          startAndStop.removeAttribute('disabled');
+//      });
+
+    </script>
+    <!-- <script async src="https://docs.opencv.org/4.5.0/opencv.js" type="text/javascript"></script> -->
+    <script async src="../assets/js/opencv-4.5.0.js" type="text/javascript"></script>
+  </body>
+</html>
+  <body>
+
+  </body>
