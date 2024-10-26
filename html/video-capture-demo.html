@@ -5,9 +5,17 @@
   <body>
     <p id="status">OpenCV.js is loading...</p>
     <p class="err" id="errorMessage"></p>
-    <button id="startAndStop">Start</button>
+    <p>
+      <button id="startAndStop">Start</button>
+    </p>
     <video id="videoInput" width="320" height="240"></video>
     <canvas id="canvasOutput" width="320" height="240"></canvas>
+    <dl id="stats">
+      <dt>Frame time (ms):</dt>
+        <dd id="frameTime"></dd>
+      <dt>Frame rate (fps):</dt>
+        <dd id="frameRate"></dd>
+    </dl>
     <script src="https://webrtc.github.io/adapter/adapter-5.0.4.js" type="text/javascript"></script>
     <script src="../assets/js/utils.js" type="text/javascript"></script>
     <script type="text/javascript">
@@ -40,8 +48,11 @@
               cap.read(src);
               cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
               cv.imshow('canvasOutput', dst);
+              thisFrameTime = (Date.now() - begin);
+              frameTime.innerHTML = thisFrameTime;
+              frameRate.innerHTML = Math.round(1000/thisFrameTime);
               // schedule the next one.
-              let delay = 1000/FPS - (Date.now() - begin);
+              let delay = 1000/FPS - thisFrameTime;
               setTimeout(processVideo, delay);
           } catch (err) {
               utils.printError(err);
@@ -57,6 +68,8 @@
       let startAndStop = document.getElementById('startAndStop');
       let canvasOutput = document.getElementById('canvasOutput');
       let canvasContext = canvasOutput.getContext('2d');
+      let frameTime = document.getElementById('frameTime');
+      let frameRate = document.getElementById('frameRate');
 
       startAndStop.addEventListener('click', () => {
           console.log('click!')
