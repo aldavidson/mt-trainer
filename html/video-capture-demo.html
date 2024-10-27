@@ -30,9 +30,21 @@
           );
         </script>
       -->
+
+    <!-- Require the peer dependencies of pose-detection. -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
+
+  <!-- You must explicitly require a TF.js backend if you're not using the TF.js union bundle. -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection"></script>
+
     <script type="text/javascript">
       document.cv_ready = false;
       let video, src, dst, cap = null;
+      let poseDetector = null;
+
       const FPS = 30;
 
       var Module = {
@@ -48,6 +60,24 @@
       function init() {
         video = document.getElementById('videoInput');
         cap = new cv.VideoCapture(video);
+        poseDetector = createPoseDetector();
+      }
+
+      // Create a detector.
+      async function createPoseDetector()  {
+        console.log('creating pose detector')
+        console.log('poseDetection = ')
+        console.log(poseDetection)
+        detector = await poseDetection.createDetector(
+          poseDetection.SupportedModels.BlazePose, 
+          {
+            runtime: 'mediapipe',
+            solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose'
+          }
+        );
+        console.log('detector = ')
+        console.log(detector)
+        return detector
       }
 
       function displayStats(frameTime) {
