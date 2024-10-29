@@ -11,6 +11,8 @@
     <video id="videoInput" width="320" height="240"></video>
     <canvas id="canvasOutput" width="320" height="240"></canvas>
     <dl id="stats">
+      <dt>Draw poses time (ms)</dt>
+        <dd id="drawTime"></dd>
       <dt>Frame time (ms):</dt>
         <dd id="frameTime"></dd>
       <dt>Frame rate (fps):</dt>
@@ -43,7 +45,9 @@
     <script type="text/javascript">
       document.cv_ready = false;
       let video, src, dst, cap = null;
+      let model = poseDetection.SupportedModels.BlazePose;
       let poseDetector = null;
+      let poses = [];
 
       const FPS = 30;
 
@@ -59,29 +63,37 @@
 
       function init() {
         video = document.getElementById('videoInput');
+        videoOutput = document.getElementById('canvasOutput');
         cap = new cv.VideoCapture(video);
-        poseDetector = createPoseDetector();
+        processVideo()
+        poseDetectorPromise = createPoseDetector(model)
+        poseDetectorPromise.then((detector) => { 
+          console.log('detector initialised', detector)
+        });
       }
 
       // Create a detector.
-      async function createPoseDetector()  {
-        console.log('creating pose detector')
-        console.log('poseDetection = ')
-        console.log(poseDetection)
+      async function createPoseDetector(model)  {
         detector = await poseDetection.createDetector(
-          poseDetection.SupportedModels.BlazePose, 
+          model, 
           {
             runtime: 'mediapipe',
             solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/pose'
           }
-        );
-        console.log('detector = ')
-        console.log(detector)
+        )
         return detector
       }
 
-      function displayStats(frameTime) {
-        if (frameTime > 0) {
+      async function detectPoses(detector) {
+        // Pass in a video stream to the model to detect poses.
+        const poses = await detector.estimatePoses(video);
+        return poses
+      }
+
+      function displayStats(thisFrameTime, thisDrawTime) {
+        drawTime.innerHTML = thisDrawTime;
+
+        if (thisFrameTime > 0) {
           frameTime.innerHTML = thisFrameTime;
           frameRate.innerHTML = Math.round(1000/thisFrameTime);
         } else {
@@ -98,11 +110,19 @@
               let begin = Date.now();
               // start processing.
               cap.read(src);
+
               cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY);
               cv.imshow('canvasOutput', dst);
 
+              thisDrawTime = null;
+              detectPoses(detector).then((poses) => {
+                drawStart = Date.now()
+                drawPoses(poses, videoOutput.getContext('2d'))
+                thisDrawTime = Date.now() - drawStart
+              })
+
               thisFrameTime = (Date.now() - begin);
-              displayStats(thisFrameTime);
+              displayStats(thisFrameTime, thisDrawTime);
 
               // call this same function in thisFrameTime ms.
               let delay = 1000/FPS - thisFrameTime;
@@ -112,6 +132,55 @@
           }
       };
 
+      function drawPoses(poses, ctx) {
+        if (poses && poses.length > 0) {
+          for (const pose of poses) {
+              if (pose.keypoints != null) {
+                  drawKeypoints(pose.keypoints, ctx);
+                  drawSkeleton(pose.keypoints, ctx);
+              }
+          }
+        }
+      }
+
+      // draw functions from https://selvamsubbiah.com/pose-detection-using-blazepose-in-tensorflow-js/
+      function drawKeypoints(keypoints, ctx) {
+        ctx.fillStyle = 'Green';
+        ctx.strokeStyle = 'White';
+        ctx.lineWidth = 2;
+        for(let i=0; i<keypoints.length; i++) {
+            drawKeypoint(keypoints[i], ctx);    
+        }
+      }
+      
+      function drawKeypoint(keypoint, ctx, scoreThreshold=0.5) {
+          const radius = 4;
+          if (keypoint.score >= scoreThreshold) {
+            const circle = new Path2D();
+            circle.arc(keypoint.x, keypoint.y, radius, 0, 2 * Math.PI);
+            ctx.fill(circle);
+            ctx.stroke(circle);
+          }
+      }
+
+      function drawSkeleton(keypoints, ctx, scoreThreshold=0.5) {
+        const color = "#fff";
+        ctx.fillStyle = color;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+     
+        poseDetection.util.getAdjacentPairs(model)
+            .forEach(([i, j]) => {
+                const kp1 = keypoints[i];
+                const kp2 = keypoints[j];
+                if (kp1.score >= scoreThreshold && kp2.score >= scoreThreshold) {
+                    ctx.beginPath();
+                    ctx.moveTo(kp1.x, kp1.y);
+                    ctx.lineTo(kp2.x, kp2.y);
+                    ctx.stroke();
+                }
+        });
+    }
     </script>
     <script type="text/javascript">
       let utils = new Utils('errorMessage');
@@ -123,9 +192,9 @@
       let canvasContext = canvasOutput.getContext('2d');
       let frameTime = document.getElementById('frameTime');
       let frameRate = document.getElementById('frameRate');
+      let drawTime = document.getElementById('drawTime');
 
       startAndStop.addEventListener('click', () => {
-          console.log('click!')
           if (!streaming) {
               utils.clearError();
               utils.startCamera('qvga', onVideoStarted, 'videoInput');
@@ -140,12 +209,11 @@
           startAndStop.innerText = 'Stop';
           videoInput.width = videoInput.videoWidth;
           videoInput.height = videoInput.videoHeight;
-          //utils.executeCode('codeEditor');
 
 
           src = new cv.Mat(video.height, video.width, cv.CV_8UC4);
           dst = new cv.Mat(video.height, video.width, cv.CV_8UC1);
-          // schedule the first one.
+          // schedule the first iteration, then recurse from there.
           setTimeout(processVideo, 0);
       }
 
