@@ -86,7 +86,7 @@
 
       async function detectPoses(detector) {
         // Pass in a video stream to the model to detect poses.
-        const poses = await detector.estimatePoses(video);
+        const poses = await detector.estimatePoses(video, {flipHorizontal: false});
         return poses
       }
 
@@ -189,7 +189,7 @@
       let videoInput = document.getElementById('videoInput');
       let startAndStop = document.getElementById('startAndStop');
       let canvasOutput = document.getElementById('canvasOutput');
-      let canvasContext = canvasOutput.getContext('2d');
+      let canvasContext = canvasOutput.getContext('2d', { willReadFrequently: true });
       let frameTime = document.getElementById('frameTime');
       let frameRate = document.getElementById('frameRate');
       let drawTime = document.getElementById('drawTime');
