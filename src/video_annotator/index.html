@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pose Annotator</title>
+  <style>
+    video, canvas { display: inline; margin-bottom: 10px; }
+    button, input { margin: 5px; }
+    #controls { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>Muay Thai Pose Annotator</h2>
+  <input type="file" id="videoUploader" accept="video/*"><br>
+  <video id="video" width="640" height="480" controls></video>
+  <canvas id="canvas" width="640" height="480"></canvas>
+
+  <div id="controls">
+    <button onclick="stepFrame(-1)">⏮️ Back</button>
+    <button onclick="video.pause()">⏸ Pause</button>
+    <button onclick="video.play()">▶️ Play</button>
+    <button onclick="stepFrame(1)">⏭️ Step</button><br>
+
+    Go to frame: <input type="number" id="seekFrame" style="width:60px;">
+    <button onclick="seekToFrame()">🔍 Seek</button><br>
+
+    <button onclick="markStart()">🔖 Mark Start</button>
+    <button onclick="markEnd()">🔖 Mark End</button>
+    <button onclick="exportClip()">💾 Export Annotated Frames</button>
+    <div id="status"></div>
+  </div>
+
+  <script type="module">
+    import { FilesetResolver, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
+
+    window.FilesetResolver = FilesetResolver;
+    window.PoseLandmarker = PoseLandmarker;
+    </script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.0/dist/jszip.min.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
