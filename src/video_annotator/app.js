@@ -208,9 +208,13 @@ function renderLoop() {
         lastVideoTime = video.currentTime;
         const results = poseLandmarker.detectForVideo(video, nowInMs);
         
-        if (selectionPoint && results.landmarks.length > 1) {
-            selectedPersonIndex = getClosestPerson(results.landmarks, selectionPoint);
+        if (selectionPoint) {
             drawCrosshairs(ctx, selectionPoint)
+            if (results.landmarks.length > 1) {
+                selectedPersonIndex = getClosestPerson(results.landmarks, selectionPoint);
+            }
+        } else {
+            console.log('selectionPoint is None');
         }
         currentLandmarks = results.landmarks[selectedPersonIndex];
     
