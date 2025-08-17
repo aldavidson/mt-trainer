@@ -6,6 +6,8 @@ let ctx = canvas.getContext("2d");
 let poseLandmarker;
 let lastVideoTime = -1;
 let currentLandmarks = null;
+let results = null;
+let lastFrameBitmap = null;
 
 let startFrame = null;
 let endFrame = null;
@@ -192,24 +194,26 @@ function getClosestPerson(landmarksList, point) {
 // 🎞️ Main Render Loop with Pose Drawing
 // -----------------------------------------
 function renderLoop() {
+
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
   if (video.readyState >= 2 && poseLandmarker) {
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Check if frame changed (time changed)
+    if (video.currentTime !== lastVideoTime) {
+      // Generate strictly increasing timestamp
+      let nowInMs = Math.floor(video.currentTime * 1000);
+      if (nowInMs <= lastTimestamp) {
+          nowInMs = lastTimestamp + MIN_INCREMENT_MS;
+      }
+      lastTimestamp = nowInMs;
 
-    // Generate strictly increasing timestamp
-    let nowInMs = Math.floor(video.currentTime * 1000);
-    if (nowInMs <= lastTimestamp) {
-        nowInMs = lastTimestamp + MIN_INCREMENT_MS;
-    }
-    lastTimestamp = nowInMs;
-
-    selectedPersonIndex = 0;
-    
-    if (lastVideoTime !== video.currentTime) {
+      selectedPersonIndex = 0;
+      
+      if (lastVideoTime !== video.currentTime) {
         lastVideoTime = video.currentTime;
-        const results = poseLandmarker.detectForVideo(video, nowInMs);
+        results = poseLandmarker.detectForVideo(video, nowInMs);
         
         if (selectionPoint) {
-            drawCrosshairs(ctx, selectionPoint)
             if (results.landmarks.length > 1) {
                 selectedPersonIndex = getClosestPerson(results.landmarks, selectionPoint);
             }
@@ -217,13 +221,29 @@ function renderLoop() {
             console.log('selectionPoint is None');
         }
         currentLandmarks = results.landmarks[selectedPersonIndex];
-    
-        for (let i = 0; i < results.landmarks.length; i++) {
-            const color = i === selectedPersonIndex ? "lime" : "red";
-            // drawLandmarks(results.landmarks[i], color);
-            drawPose(ctx, results.landmarks[i], color);
-            }
+        // Save a copy of the current drawn frame into a bitmap
+        lastFrameBitmap = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      }
+    }  else {
+        // Paused → redraw last saved frame rather than video
+        if (lastFrameBitmap) {
+            ctx.putImageData(lastFrameBitmap, 0, 0);
         }
+    }
+  }
+
+  if (selectionPoint) {
+    drawCrosshairs(ctx, selectionPoint)
+  }
+  // if (results && selectedPersonIndex) {
+  //   for (let i = 0; i < results.landmarks.length; i++) {
+  //       const color = i === selectedPersonIndex ? "lime" : "red";
+  //       // drawLandmarks(results.landmarks[i], color);
+  //       drawPose(ctx, results.landmarks[i], color);
+  //   }
+  // }
+  if (currentLandmarks) {
+    drawPose(ctx, currentLandmarks);
   }
   requestAnimationFrame(renderLoop);
 }
