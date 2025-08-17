@@ -10,11 +10,17 @@
   </style>
 </head>
 <body>
-  <h2>Muay Thai Pose Annotator</h2>
+  <h2>Pose Annotator</h2>
   <input type="file" id="videoUploader" accept="video/*"><br>
   <video id="video" width="640" height="480" controls></video>
   <canvas id="canvas" width="640" height="480"></canvas>
 
+  <div id="stats">
+    <dl>
+        <dt>Avg. visibility</dt>
+            <dd id="avg_vis"></dd>
+    </dl>
+  </div>
   <div id="controls">
     <button onclick="stepFrame(-1)">⏮️ Back</button>
     <button onclick="video.pause()">⏸ Pause</button>
